@@ -65,6 +65,8 @@ pub fn main() -> Result<(), String> {
 	let wall_data = wall.raw_pixels();
 
 	let (vao, texture) = unsafe {
+		gl::Enable(gl::DEPTH_TEST);
+
 		// set up vertex data (and buffer(s)) and configure vertex attributes
 		// ------------------------------------------------------------------
 		// HINT: type annotation is crucial since default for float literals is f64
@@ -141,29 +143,35 @@ pub fn main() -> Result<(), String> {
 	};
 
 	let mut camera = Camera::new(glm::vec3(0.0, 0.0, 0.0));
-	camera.speed = 0.1;
+	camera.speed = 0.01;
 
 	while !window.should_close() {
 		process_events(&mut window, &events);
 
+		camera.position.x = (glfw.get_time().sin() * 1.0) as f32;
+		camera.position.z = (glfw.get_time().cos() * 1.0) as f32;
+
 		let (window_width, window_height) = window.get_size();
+
 		let projection = glm::perspective(
-			window_width as f32 / window_height as f32,
-			f32::from(glm::radians(&glm::vec1(camera.zoom)).x),
+			(window_width as f32) / (window_height as f32),
+			camera.zoom,
 			0.1,
 			100.0,
 		);
 
-		println!(
-			"camera: {}, projection: {}",
-			camera.get_view_matrix(),
-			projection
+		let projection = glm::mat4(
+			1.0, 0.0, 0.0, 0.0, //
+			0.0, 1.0, 0.0, 0.0, //
+			0.0, 0.0, 1.0, 0.0, //
+			0.0, 0.0, 0.0, 1.0, //
 		);
-		camera.do_move(CameraDirection::Left, 0.016);
+
+		println!("{}", projection * camera.get_view_matrix());
 
 		unsafe {
 			gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-			gl::Clear(gl::COLOR_BUFFER_BIT);
+			gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 			shader.use_program();
 
 			shader.set_mat4(c_str!("projection"), &projection);

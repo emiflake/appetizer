@@ -1,0 +1,11 @@
+[package]
+name = "opengl-appetizer"
+version = "0.1.0"
+authors = ["Emily Martins <emily.flakeheart@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+glfw = "0.20.0"
+gl = "0.13.0"

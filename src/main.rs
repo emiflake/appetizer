@@ -33,6 +33,7 @@ pub fn main() -> Result<(), String> {
 
 	// glfw window creation
 	// --------------------
+
 	let (mut window, events) = glfw
 		.create_window(
 			SCR_WIDTH,

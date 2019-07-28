@@ -7,20 +7,29 @@ extern crate nalgebra_glm as glm;
 
 use self::gl::types::*;
 use self::glfw::{Action, Context, Key};
+use std::ffi::CStr;
 use std::ffi::CString;
 use std::mem;
 use std::os::raw::c_void;
 use std::ptr;
 use std::sync::mpsc::Receiver;
 
+mod camera;
 mod shader;
 mod texture_map;
+use camera::{Camera, CameraDirection};
 use shader::Shader;
 
 use image::GenericImageView;
 
 const SCR_WIDTH: u32 = 800;
 const SCR_HEIGHT: u32 = 600;
+
+macro_rules! c_str {
+	($literal:expr) => {
+		CStr::from_bytes_with_nul_unchecked(concat!($literal, "\0").as_bytes())
+	};
+}
 
 pub fn main() -> Result<(), String> {
 	let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
@@ -131,13 +140,34 @@ pub fn main() -> Result<(), String> {
 		(vao, texture)
 	};
 
+	let mut camera = Camera::new(glm::vec3(0.0, 0.0, 0.0));
+	camera.speed = 0.1;
+
 	while !window.should_close() {
 		process_events(&mut window, &events);
+
+		let (window_width, window_height) = window.get_size();
+		let projection = glm::perspective(
+			window_width as f32 / window_height as f32,
+			f32::from(glm::radians(&glm::vec1(camera.zoom)).x),
+			0.1,
+			100.0,
+		);
+
+		println!(
+			"camera: {}, projection: {}",
+			camera.get_view_matrix(),
+			projection
+		);
+		camera.do_move(CameraDirection::Left, 0.016);
 
 		unsafe {
 			gl::ClearColor(0.0, 0.0, 0.0, 1.0);
 			gl::Clear(gl::COLOR_BUFFER_BIT);
 			shader.use_program();
+
+			shader.set_mat4(c_str!("projection"), &projection);
+			shader.set_mat4(c_str!("camera"), &camera.get_view_matrix());
 
 			gl::BindTexture(gl::TEXTURE_2D, texture);
 

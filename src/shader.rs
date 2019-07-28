@@ -114,7 +114,7 @@ impl Shader {
 			value as i32,
 		);
 	}
-	pub unsafe fn set_tnt(&self, name: &CStr, value: i32) {
+	pub unsafe fn set_int(&self, name: &CStr, value: i32) {
 		gl::Uniform1i(gl::GetUniformLocation(self.get_id(), name.as_ptr()), value);
 	}
 	pub unsafe fn set_float(&self, name: &CStr, value: f32) {

@@ -1,20 +1,25 @@
 extern crate gl;
 extern crate glfw;
+extern crate image;
 
 use self::gl::types::*;
 use self::glfw::{Action, Context, Key};
+use std::ffi::CString;
 use std::mem;
 use std::os::raw::c_void;
 use std::ptr;
 use std::sync::mpsc::Receiver;
 
 mod shader;
+mod texture_map;
 use shader::Shader;
+
+use image::GenericImageView;
 
 const SCR_WIDTH: u32 = 800;
 const SCR_HEIGHT: u32 = 600;
 
-pub fn main() {
+pub fn main() -> Result<(), String> {
 	let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 	glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
 	glfw.window_hint(glfw::WindowHint::OpenGlProfile(
@@ -38,18 +43,23 @@ pub fn main() {
 	window.set_key_polling(true);
 	window.set_framebuffer_size_polling(true);
 
+	let mut texture_map = texture_map::TextureMap::new();
+
 	gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 	let shader = Shader::new("vertex.vs", "fragment.fs").unwrap();
 
-	let (vao, _ebo) = unsafe {
+	let wall = image::open("textures/wall.jpg").expect("Could not load textures/wall.jpg");
+	let wall_data = wall.raw_pixels();
+
+	let (vao, texture) = unsafe {
 		// set up vertex data (and buffer(s)) and configure vertex attributes
 		// ------------------------------------------------------------------
 		// HINT: type annotation is crucial since default for float literals is f64
-		let vertices: [f32; 12] = [
-			0.5, 0.5, 0.0, // top right
-			0.5, -0.5, 0.0, // bottom right
-			-0.5, -0.5, 0.0, // bottom left
-			-0.5, 0.5, 0.0, // top left
+		let vertices: [f32; 20] = [
+			0.5, 0.5, 0.0, 1.0, 1.0, // top right
+			0.5, -0.5, 0.0, 1.0, 0.0, // bottom right
+			-0.5, -0.5, 0.0, 0.0, 0.0, // bottom left
+			-0.5, 0.5, 0.0, 0.0, 1.0, // top left
 		];
 
 		let indexes: [u32; 6] = [
@@ -79,27 +89,42 @@ pub fn main() {
 			gl::STATIC_DRAW,
 		);
 
+		let stride = 5 * mem::size_of::<GLfloat>() as GLsizei;
+
+		gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, ptr::null());
+		gl::EnableVertexAttribArray(0);
 		gl::VertexAttribPointer(
-			0,
-			3,
+			1,
+			2,
 			gl::FLOAT,
 			gl::FALSE,
-			3 * mem::size_of::<GLfloat>() as GLsizei,
-			ptr::null(),
+			stride,
+			(3 * mem::size_of::<GLfloat>()) as *const c_void,
 		);
-		gl::EnableVertexAttribArray(0);
+		gl::EnableVertexAttribArray(1);
 
-		// note that this is allowed, the call to gl::VertexAttribPointer registered vbo as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-		gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+		let mut texture = 0;
+		gl::GenTextures(1, &mut texture);
+		gl::BindTexture(gl::TEXTURE_2D, texture); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
+		gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32); // set texture wrapping to gl::REPEAT (default wrapping method)
+		gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+		// set texture filtering parameters
+		gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+		gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+		gl::TexImage2D(
+			gl::TEXTURE_2D,
+			0,
+			gl::RGB as i32,
+			wall.width() as i32,
+			wall.height() as i32,
+			0,
+			gl::RGB,
+			gl::UNSIGNED_BYTE,
+			&wall_data[0] as *const u8 as *const c_void,
+		);
+		gl::GenerateMipmap(gl::TEXTURE_2D);
 
-		// You can unbind the vao afterwards so other vao calls won't accidentally modify this vao, but this rarely happens. Modifying other
-		// vaos requires a call to glBindVertexArray anyways so we generally don't unbind vaos (nor vbos) when it's not directly necessary.
-		gl::BindVertexArray(0);
-
-		// uncomment this call to draw in wireframe polygons.
-		// gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
-
-		(vao, ebo)
+		(vao, texture)
 	};
 
 	while !window.should_close() {
@@ -110,6 +135,14 @@ pub fn main() {
 			gl::Clear(gl::COLOR_BUFFER_BIT);
 			shader.use_program();
 
+			gl::BindTexture(gl::TEXTURE_2D, texture);
+
+			let time = glfw.get_time() as f32;
+			let green = time.sin() / 2.0 + 0.5;
+			let our_color = CString::new("our_color").unwrap();
+			let vertex_color_loc = gl::GetUniformLocation(shader.get_id(), our_color.as_ptr());
+			gl::Uniform1f(vertex_color_loc, green);
+
 			gl::BindVertexArray(vao);
 			gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, ptr::null());
 		}
@@ -117,6 +150,8 @@ pub fn main() {
 		window.swap_buffers();
 		glfw.poll_events();
 	}
+
+	Ok(())
 }
 
 fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>) {

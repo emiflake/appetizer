@@ -4,11 +4,8 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 
 use std::ffi::CString;
-use std::mem;
-use std::os::raw::c_void;
 use std::ptr;
 use std::str;
-use std::sync::mpsc::Receiver;
 
 #[derive(Debug)]
 pub enum ShaderError {
@@ -16,7 +13,7 @@ pub enum ShaderError {
 	CompileError(String),
 }
 
-pub struct Shader(u32);
+pub struct Shader(pub u32);
 
 impl Shader {
 	pub fn new(vertex_path: &str, fragment_path: &str) -> std::result::Result<Self, ShaderError> {
@@ -103,7 +100,12 @@ impl Shader {
 			Ok(Self(shader_program))
 		}
 	}
+
 	pub unsafe fn use_program(&self) {
 		gl::UseProgram(self.0);
+	}
+
+	pub fn get_id(&self) -> u32 {
+		self.0
 	}
 }

@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 glfw = "0.20.0"
 gl = "0.13.0"
+image = "0.22.0"

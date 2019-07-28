@@ -11,7 +11,6 @@ pub struct Camera {
     pub pitch: f32,
 
     pub speed: f32,
-    pub sensitivity: f32,
     pub zoom: f32,
 }
 
@@ -33,7 +32,6 @@ impl Default for Camera {
             yaw: -90.0,
             pitch: 0.0,
             speed: 2.5,
-            sensitivity: 0.1,
             zoom: 45.0,
         }
     }
@@ -50,10 +48,13 @@ impl Camera {
         camera
     }
 
+    // Project the view forwards,
+    // self.front is essentially the point we're looking it.
     pub fn get_view_matrix(&self) -> glm::Mat4 {
         glm::look_at(&self.position, &(self.position + self.front), &self.up)
     }
 
+    // Primitive movement for keyboards, (dumb)
     pub fn do_move(&mut self, d: CameraDirection, dt: f32) {
         let velocity = self.speed * dt;
         match d {
@@ -64,9 +65,20 @@ impl Camera {
         }
     }
 
+    pub fn do_move_relative(&mut self, delta: glm::Vec3, dt: f32) {
+        self.position += self.front * delta.z + self.up * delta.y + self.right * delta.x;
+    }
+
+    // Rotate Yaw and Pitch.
     pub fn do_rotate(&mut self, offset: glm::Vec2) {
-        self.yaw += offset.x * self.sensitivity;
-        self.pitch += offset.y * self.sensitivity;
+        self.yaw += offset.x;
+        self.pitch += offset.y;
+
+        if self.pitch > 90.0 {
+            self.pitch = 90.0;
+        } else if self.pitch < -90.0 {
+            self.pitch = 90.0;
+        }
 
         self.update_camera_vectors();
     }

@@ -1,8 +1,11 @@
+#![allow(dead_code)]
+
 use gl::types::*;
 
 use std::fs::File;
 use std::io::{BufReader, Read};
 
+use std::ffi::CStr;
 use std::ffi::CString;
 use std::ptr;
 use std::str;
@@ -103,6 +106,42 @@ impl Shader {
 
 	pub unsafe fn use_program(&self) {
 		gl::UseProgram(self.0);
+	}
+
+	pub unsafe fn set_bool(&self, name: &CStr, value: bool) {
+		gl::Uniform1i(
+			gl::GetUniformLocation(self.get_id(), name.as_ptr()),
+			value as i32,
+		);
+	}
+	pub unsafe fn set_tnt(&self, name: &CStr, value: i32) {
+		gl::Uniform1i(gl::GetUniformLocation(self.get_id(), name.as_ptr()), value);
+	}
+	pub unsafe fn set_float(&self, name: &CStr, value: f32) {
+		gl::Uniform1f(gl::GetUniformLocation(self.get_id(), name.as_ptr()), value);
+	}
+	pub unsafe fn set_vector3(&self, name: &CStr, value: &glm::Vec3) {
+		gl::Uniform3fv(
+			gl::GetUniformLocation(self.get_id(), name.as_ptr()),
+			1,
+			value.as_ptr(),
+		);
+	}
+	pub unsafe fn set_vec3(&self, name: &CStr, x: f32, y: f32, z: f32) {
+		gl::Uniform3f(
+			gl::GetUniformLocation(self.get_id(), name.as_ptr()),
+			x,
+			y,
+			z,
+		);
+	}
+	pub unsafe fn set_mat4(&self, name: &CStr, mat: &glm::Mat4) {
+		gl::UniformMatrix4fv(
+			gl::GetUniformLocation(self.get_id(), name.as_ptr()),
+			1,
+			gl::FALSE,
+			mat.as_ptr(),
+		);
 	}
 
 	pub fn get_id(&self) -> u32 {

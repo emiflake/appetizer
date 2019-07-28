@@ -143,16 +143,17 @@ pub fn main() -> Result<(), String> {
 	};
 
 	let mut camera = Camera::new(glm::vec3(0.0, 0.0, 0.0));
-	camera.speed = 0.01;
+	let mut last_frame: f32 = 0.0;
+	let mut last_pos = (0.0, 0.0);
 
 	while !window.should_close() {
+		let current_frame = glfw.get_time() as f32;
+		let delta_time = current_frame - last_frame;
+		last_frame = current_frame;
+
 		process_events(&mut window, &events);
 
-		camera.position.x = (glfw.get_time().sin() * 1.0) as f32;
-		camera.position.z = (glfw.get_time().cos() * 1.0) as f32;
-
 		let (window_width, window_height) = window.get_size();
-
 		let projection = glm::perspective(
 			(window_width as f32) / (window_height as f32),
 			camera.zoom,
@@ -160,12 +161,24 @@ pub fn main() -> Result<(), String> {
 			100.0,
 		);
 
-		let projection = glm::mat4(
-			1.0, 0.0, 0.0, 0.0, //
-			0.0, 1.0, 0.0, 0.0, //
-			0.0, 0.0, 1.0, 0.0, //
-			0.0, 0.0, 0.0, 1.0, //
-		);
+		if window.get_key(Key::W) == Action::Press {
+			camera.do_move(CameraDirection::Forward, delta_time)
+		}
+		if window.get_key(Key::A) == Action::Press {
+			camera.do_move(CameraDirection::Left, delta_time)
+		}
+		if window.get_key(Key::S) == Action::Press {
+			camera.do_move(CameraDirection::Backward, delta_time)
+		}
+		if window.get_key(Key::D) == Action::Press {
+			camera.do_move(CameraDirection::Right, delta_time)
+		}
+
+		let (mouse_x, mouse_y) = window.get_cursor_pos();
+		let (delta_x, delta_y) = (last_pos.0 - mouse_x, last_pos.1 - mouse_y);
+		last_pos = (mouse_x, mouse_y);
+		window.set_cursor_mode(glfw::CursorMode::Disabled);
+		camera.do_rotate(glm::vec2(-delta_x as f32, delta_y as f32));
 
 		println!("{}", projection * camera.get_view_matrix());
 

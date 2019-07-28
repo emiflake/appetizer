@@ -2,6 +2,9 @@ extern crate gl;
 extern crate glfw;
 extern crate image;
 
+extern crate nalgebra;
+extern crate nalgebra_glm as glm;
+
 use self::gl::types::*;
 use self::glfw::{Action, Context, Key};
 use std::ffi::CString;

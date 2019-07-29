@@ -29,8 +29,8 @@ use rasterizable::Rasterizable;
 use shader::Shader;
 use world::World;
 
-const SCR_WIDTH: u32 = 800;
-const SCR_HEIGHT: u32 = 600;
+const SCR_WIDTH: u32 = 1280;
+const SCR_HEIGHT: u32 = 720;
 
 pub fn main() -> Result<(), String> {
 	let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
@@ -54,7 +54,9 @@ pub fn main() -> Result<(), String> {
 	window.set_key_polling(true);
 	window.set_framebuffer_size_polling(true);
 
-	let cube = obj_parser::parse("objs/teapot.obj".to_string()).unwrap();
+	let teapot = object::BakedObject::from(&obj_parser::parse("objs/teapot.obj".to_string()).unwrap());
+	let mut cube= object::BakedObject::from(&obj_parser::parse("objs/cube.obj".to_string()).unwrap());
+	cube.transformation = glm::translate(&cube.transformation, &glm::vec3(50.0, 0.0, 0.0));
 
 	gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 	let shader = Shader::new("vertex.vs", "fragment.fs").unwrap();
@@ -117,6 +119,7 @@ pub fn main() -> Result<(), String> {
 			};
 
 			cube.rasterize(&world, &raster_settings);
+			teapot.rasterize(&world, &raster_settings);
 		}
 
 		window.swap_buffers();

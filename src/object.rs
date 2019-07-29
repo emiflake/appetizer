@@ -78,20 +78,32 @@ impl Default for Object {
 	}
 }
 
+pub struct BakedObject {
+	pub vertices: Vec<f32>,
+	pub transformation: glm::Mat4,
+}
+
+impl From<&Object> for BakedObject {
+	fn from(obj: &Object) -> Self {
+		BakedObject {
+			vertices: obj.get_vertices(),
+			transformation: obj.model,
+		}
+	}
+}
+
 pub struct ObjSettings<'a> {
 	pub texture: &'a DynamicImage,
 	pub raw_pixels: &'a Vec<u8>,
 	pub shader: &'a crate::shader::Shader,
 }
 
-impl<'a> Rasterizable<'a, World, ObjSettings<'_>> for Object {
+impl<'a> Rasterizable<'a, World, ObjSettings<'_>> for BakedObject {
 	fn rasterize(&self, world: &World, raster_settings: &RasterSettings<ObjSettings>) {
 		let shader = &raster_settings.specifics.shader;
 
 		unsafe {
-			// TODO: Precompute this value.
-			// Currently most expensive part of the program
-			let vertices = self.get_vertices();
+			let vertices = &self.vertices;
 
 			let (mut vbo, mut vao) = (0, 0);
 			gl::GenVertexArrays(1, &mut vao);
@@ -132,15 +144,19 @@ impl<'a> Rasterizable<'a, World, ObjSettings<'_>> for Object {
 			);
 			gl::EnableVertexAttribArray(2);
 
-			// I can verify that this part works,
-			// since the camera display
-			// and the shader has effect
 			shader.use_program();
+			shader.set_mat4(c_str!("model"), &self.transformation);
 			shader.set_mat4(c_str!("projection"), &raster_settings.projection);
-			shader.set_mat4(c_str!("camera"), &world.camera.get_view_matrix());
+
 			shader.set_vec3(c_str!("light_pos"), 0.0, 50.0, 50.0);
 			shader.set_vec3(c_str!("light_color"), 1.0, 1.0, 1.0);
-			shader.set_vector3(c_str!("view_pos"), &world.camera.position);
+
+			shader.set_vector3(c_str!("camera_pos"), &world.camera.position);
+			shader.set_vector3(
+				c_str!("camera_tgt"),
+				&(world.camera.front + world.camera.position),
+			);
+			shader.set_vector3(c_str!("camera_up"), &world.camera.up);
 
 			// Texture portion
 			let mut texture = 0; // Texture handle

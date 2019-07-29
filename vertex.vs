@@ -10,7 +10,6 @@ out vec3 Normal;
 uniform mat4 camera;
 uniform mat4 projection;
 
-
 void main() {
 	TexCoord = aTexCoord;
 	Normal = aNormal;

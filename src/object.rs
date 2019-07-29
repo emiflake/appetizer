@@ -84,7 +84,7 @@ pub struct ObjSettings<'a> {
 	pub shader: &'a crate::shader::Shader,
 }
 
-impl<'a> Rasterizable<'a, World, ObjSettings<'a>> for Object {
+impl<'a> Rasterizable<'a, World, ObjSettings<'_>> for Object {
 	fn rasterize(&self, world: &World, raster_settings: &RasterSettings<ObjSettings>) {
 		let shader = &raster_settings.specifics.shader;
 
@@ -140,6 +140,7 @@ impl<'a> Rasterizable<'a, World, ObjSettings<'a>> for Object {
 			shader.set_mat4(c_str!("camera"), &world.camera.get_view_matrix());
 			shader.set_vec3(c_str!("light_pos"), 0.0, 50.0, 50.0);
 			shader.set_vec3(c_str!("light_color"), 1.0, 1.0, 1.0);
+			shader.set_vector3(c_str!("view_pos"), &world.camera.position);
 
 			// Texture portion
 			let mut texture = 0; // Texture handle

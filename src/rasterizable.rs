@@ -1,13 +1,18 @@
-trait Rasterizable<T> {
-    fn rasterize(&self, state: &T);
+pub trait Rasterizable<'a, T, S> {
+    fn rasterize(&self, state: &T, raster_settings: &RasterSettings<S>);
 }
 
-pub struct RasterCollection<'a, T>(Vec<Box<dyn Rasterizable<T> + 'a>>);
+pub struct RasterCollection<'a, T, S>(Vec<Box<dyn Rasterizable<'a, T, S> + 'a>>);
 
-impl<T> Rasterizable<T> for RasterCollection<'_, T> {
-    fn rasterize(&self, state: &T) {
+impl<'a, T, S> Rasterizable<'a, T, S> for RasterCollection<'_, T, S> {
+    fn rasterize(&self, state: &T, raster_settings: &RasterSettings<S>) {
         for object in &self.0 {
-            object.rasterize(state);
+            object.rasterize(state, raster_settings);
         }
     }
+}
+
+pub struct RasterSettings<T> {
+	pub projection: glm::Mat4,
+	pub specifics: T,
 }

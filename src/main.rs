@@ -15,214 +15,157 @@ use std::ptr;
 use std::sync::mpsc::Receiver;
 
 mod camera;
+#[macro_use]
+mod macros;
 mod obj_parser;
 mod object;
 mod rasterizable;
 mod shader;
 mod texture_map;
+mod world;
 
 use camera::{Camera, CameraDirection};
+use rasterizable::Rasterizable;
 use shader::Shader;
-
-use image::GenericImageView;
+use world::World;
 
 const SCR_WIDTH: u32 = 800;
 const SCR_HEIGHT: u32 = 600;
 
-macro_rules! c_str {
-    ($literal:expr) => {
-        CStr::from_bytes_with_nul_unchecked(concat!($literal, "\0").as_bytes())
-    };
-}
-
 pub fn main() -> Result<(), String> {
-    let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
-    glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
-    glfw.window_hint(glfw::WindowHint::OpenGlProfile(
-        glfw::OpenGlProfileHint::Core,
-    ));
-    #[cfg(target_os = "macos")]
-    glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
+	let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+	glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
+	glfw.window_hint(glfw::WindowHint::OpenGlProfile(
+		glfw::OpenGlProfileHint::Core,
+	));
+	#[cfg(target_os = "macos")]
+	glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
 
-    // glfw window creation
-    // --------------------
+	let (mut window, events) = glfw
+		.create_window(
+			SCR_WIDTH,
+			SCR_HEIGHT,
+			"Appetizer",
+			glfw::WindowMode::Windowed,
+		)
+		.expect("Failed to create GLFW window");
 
-    let (mut window, events) = glfw
-        .create_window(
-            SCR_WIDTH,
-            SCR_HEIGHT,
-            "Appetizer",
-            glfw::WindowMode::Windowed,
-        )
-        .expect("Failed to create GLFW window");
+	window.make_current();
+	window.set_key_polling(true);
+	window.set_framebuffer_size_polling(true);
 
-    window.make_current();
-    window.set_key_polling(true);
-    window.set_framebuffer_size_polling(true);
+	let cube = obj_parser::parse("objs/teapot.obj".to_string()).unwrap();
 
-    let mut texture_map = texture_map::TextureMap::new();
+	gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
+	let shader = Shader::new("vertex.vs", "fragment.fs").unwrap();
 
-    gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
-    let shader = Shader::new("vertex.vs", "fragment.fs").unwrap();
+	// Preload the texture
+	let wall = image::open("textures/wall.jpg").expect("Could not load textures/wall.jpg");
+	// Necessary for interaction with OpenGL, prebake it.
+	let wall_data = wall.raw_pixels();
 
-    let wall = image::open("textures/wall.jpg").expect("Could not load textures/wall.jpg");
-    let wall_data = wall.raw_pixels();
+	let camera = Camera::new(glm::vec3(0.0, 0.0, 0.0));
+	let mut world = World { camera };
 
-    let (vao, texture) = unsafe {
-        gl::Enable(gl::DEPTH_TEST);
+	// Necessary to make the world not look dumb.
+	unsafe {
+		gl::Enable(gl::DEPTH_TEST);
+	}
 
-        // set up vertex data (and buffer(s)) and configure vertex attributes
-        // ------------------------------------------------------------------
-        // HINT: type annotation is crucial since default for float literals is f64
-        let vertices: [f32; 20] = [
-            0.5, 0.5, 0.0, 1.0, 1.0, // top right
-            0.5, -0.5, 0.0, 1.0, 0.0, // bottom right
-            -0.5, -0.5, 0.0, 0.0, 0.0, // bottom left
-            -0.5, 0.5, 0.0, 0.0, 1.0, // top left
-        ];
+	// Delta checking variables
+	let mut last_frame: f32 = 0.0;
+	let mut last_pos = (0.0, 0.0);
+	while !window.should_close() {
+		let current_frame = glfw.get_time() as f32;
+		let delta_time = current_frame - last_frame;
+		last_frame = current_frame;
 
-        let indexes: [u32; 6] = [
-            0, 1, 3, // first triangle
-            1, 2, 3, // second triangle
-        ];
-        let (mut vbo, mut vao, mut ebo) = (0, 0, 0);
-        gl::GenVertexArrays(1, &mut vao);
-        gl::GenBuffers(1, &mut vbo);
-        gl::GenBuffers(1, &mut ebo);
-        // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-        gl::BindVertexArray(vao);
+		let (mouse_x, mouse_y) = window.get_cursor_pos();
+		let (delta_x, delta_y) = (last_pos.0 - mouse_x, last_pos.1 - mouse_y);
+		last_pos = (mouse_x, mouse_y);
 
-        gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ebo);
-        gl::BufferData(
-            gl::ELEMENT_ARRAY_BUFFER,
-            (indexes.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-            &indexes[0] as *const u32 as *const c_void,
-            gl::STATIC_DRAW,
-        );
+		process_input(
+			&mut window,
+			&mut world,
+			delta_time,
+			(delta_x as f32, delta_y as f32),
+		);
+		process_events(&mut window, &events);
 
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-        gl::BufferData(
-            gl::ARRAY_BUFFER,
-            (vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-            &vertices[0] as *const f32 as *const c_void,
-            gl::STATIC_DRAW,
-        );
+		let (window_width, window_height) = window.get_size();
+		let projection = glm::perspective(
+			(window_width as f32) / (window_height as f32),
+			world.camera.zoom,
+			0.1,
+			10000.0,
+		);
 
-        let stride = 5 * mem::size_of::<GLfloat>() as GLsizei;
+		unsafe {
+			gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+			gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-        gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, ptr::null());
-        gl::EnableVertexAttribArray(0);
-        gl::VertexAttribPointer(
-            1,
-            2,
-            gl::FLOAT,
-            gl::FALSE,
-            stride,
-            (3 * mem::size_of::<GLfloat>()) as *const c_void,
-        );
-        gl::EnableVertexAttribArray(1);
+			use crate::object::ObjSettings;
+			let wall_settings = ObjSettings {
+				texture: &wall,
+				raw_pixels: &wall_data,
+				shader: &shader,
+			};
 
-        let mut texture = 0;
-        gl::GenTextures(1, &mut texture);
-        gl::BindTexture(gl::TEXTURE_2D, texture); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32); // set texture wrapping to gl::REPEAT (default wrapping method)
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
-        // set texture filtering parameters
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-        gl::TexImage2D(
-            gl::TEXTURE_2D,
-            0,
-            gl::RGB as i32,
-            wall.width() as i32,
-            wall.height() as i32,
-            0,
-            gl::RGB,
-            gl::UNSIGNED_BYTE,
-            &wall_data[0] as *const u8 as *const c_void,
-        );
-        gl::GenerateMipmap(gl::TEXTURE_2D);
+			let raster_settings = crate::rasterizable::RasterSettings {
+				projection,
+				specifics: wall_settings,
+			};
 
-        (vao, texture)
-    };
+			cube.rasterize(&world, &raster_settings);
+		}
 
-    let mut camera = Camera::new(glm::vec3(0.0, 0.0, 0.0));
-    let mut last_frame: f32 = 0.0;
-    let mut last_pos = (0.0, 0.0);
+		window.swap_buffers();
+		glfw.poll_events();
+	}
 
-    while !window.should_close() {
-        let current_frame = glfw.get_time() as f32;
-        let delta_time = current_frame - last_frame;
-        last_frame = current_frame;
-
-        process_events(&mut window, &events);
-
-        let (window_width, window_height) = window.get_size();
-        let projection = glm::perspective(
-            (window_width as f32) / (window_height as f32),
-            camera.zoom,
-            0.1,
-            100.0,
-        );
-
-        if window.get_key(Key::W) == Action::Press {
-            camera.do_move(CameraDirection::Forward, delta_time)
-        }
-        if window.get_key(Key::A) == Action::Press {
-            camera.do_move(CameraDirection::Left, delta_time)
-        }
-        if window.get_key(Key::S) == Action::Press {
-            camera.do_move(CameraDirection::Backward, delta_time)
-        }
-        if window.get_key(Key::D) == Action::Press {
-            camera.do_move(CameraDirection::Right, delta_time)
-        }
-
-        let (mouse_x, mouse_y) = window.get_cursor_pos();
-        let (delta_x, delta_y) = (last_pos.0 - mouse_x, last_pos.1 - mouse_y);
-        last_pos = (mouse_x, mouse_y);
-        window.set_cursor_mode(glfw::CursorMode::Disabled);
-        camera.do_rotate(glm::vec2(-delta_x as f32 / 10.0, delta_y as f32 / 10.0));
-
-        println!("{}", projection * camera.get_view_matrix());
-
-        unsafe {
-            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-            shader.use_program();
-
-            shader.set_mat4(c_str!("projection"), &projection);
-            shader.set_mat4(c_str!("camera"), &camera.get_view_matrix());
-
-            gl::BindTexture(gl::TEXTURE_2D, texture);
-
-            let time = glfw.get_time() as f32;
-            let green = time.sin() / 2.0 + 0.5;
-            let our_color = CString::new("our_color").unwrap();
-            let vertex_color_loc = gl::GetUniformLocation(shader.get_id(), our_color.as_ptr());
-            gl::Uniform1f(vertex_color_loc, green);
-
-            gl::BindVertexArray(vao);
-            gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, ptr::null());
-        }
-
-        window.swap_buffers();
-        glfw.poll_events();
-    }
-
-    Ok(())
+	Ok(())
 }
 
 fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>) {
-    for (_, event) in glfw::flush_messages(events) {
-        match event {
-            glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
-                gl::Viewport(0, 0, width, height)
-            },
-            glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                window.set_should_close(true)
-            }
-            _ => {}
-        }
-    }
+	for (_, event) in glfw::flush_messages(events) {
+		match event {
+			glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
+				gl::Viewport(0, 0, width, height)
+			},
+			glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
+				window.set_should_close(true)
+			}
+			_ => {}
+		}
+	}
+}
+
+fn process_input(
+	window: &mut glfw::Window,
+	mut world: &mut World,
+	delta_time: f32,
+	(delta_x, delta_y): (f32, f32),
+) {
+	world.camera.speed = if window.get_key(Key::LeftShift) == Action::Press {
+		100.0
+	} else {
+		1.0
+	};
+	if window.get_key(Key::W) == Action::Press {
+		world.camera.do_move(CameraDirection::Forward, delta_time)
+	}
+	if window.get_key(Key::A) == Action::Press {
+		world.camera.do_move(CameraDirection::Left, delta_time)
+	}
+	if window.get_key(Key::S) == Action::Press {
+		world.camera.do_move(CameraDirection::Backward, delta_time)
+	}
+	if window.get_key(Key::D) == Action::Press {
+		world.camera.do_move(CameraDirection::Right, delta_time)
+	}
+
+	window.set_cursor_mode(glfw::CursorMode::Disabled);
+	world
+		.camera
+		.do_rotate(glm::vec2(-delta_x / 10.0, delta_y / 10.0));
 }

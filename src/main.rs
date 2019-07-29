@@ -5,29 +5,26 @@ extern crate image;
 extern crate nalgebra;
 extern crate nalgebra_glm as glm;
 
-use self::gl::types::*;
+extern crate specs;
+#[macro_use]
+extern crate specs_derive;
+
 use self::glfw::{Action, Context, Key};
-use std::ffi::CStr;
-use std::ffi::CString;
-use std::mem;
-use std::os::raw::c_void;
-use std::ptr;
 use std::sync::mpsc::Receiver;
 
-mod camera;
 #[macro_use]
-mod macros;
-mod obj_parser;
 mod object;
-mod rasterizable;
-mod shader;
-mod texture_map;
-mod world;
+mod macros;
 
-use camera::{Camera, CameraDirection};
-use rasterizable::Rasterizable;
-use shader::Shader;
-use world::World;
+mod components;
+mod resources;
+mod systems;
+
+use specs::prelude::*;
+
+use components::*;
+use resources::*;
+use systems::*;
 
 const SCR_WIDTH: u32 = 1280;
 const SCR_HEIGHT: u32 = 720;
@@ -54,72 +51,57 @@ pub fn main() -> Result<(), String> {
 	window.set_key_polling(true);
 	window.set_framebuffer_size_polling(true);
 
-	let teapot = object::BakedObject::from(&obj_parser::parse("objs/teapot.obj".to_string()).unwrap());
-	let mut cube= object::BakedObject::from(&obj_parser::parse("objs/cube.obj".to_string()).unwrap());
-	cube.transformation = glm::translate(&cube.transformation, &glm::vec3(50.0, 0.0, 0.0));
-
 	gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
-	let shader = Shader::new("vertex.vs", "fragment.fs").unwrap();
 
-	// Preload the texture
-	let wall = image::open("textures/wall.jpg").expect("Could not load textures/wall.jpg");
-	// Necessary for interaction with OpenGL, prebake it.
-	let wall_data = wall.raw_pixels();
-
-	let camera = Camera::new(glm::vec3(0.0, 0.0, 0.0));
-	let mut world = World { camera };
-
-	// Necessary to make the world not look dumb.
 	unsafe {
 		gl::Enable(gl::DEPTH_TEST);
 	}
 
-	// Delta checking variables
-	let mut last_frame: f32 = 0.0;
-	let mut last_pos = (0.0, 0.0);
+	// Initialized everything
+
+	let mut world: World = World::new();
+	world.register::<transformation::TransformationComponent>();
+	world.register::<model::ModelComponent>();
+	world.register::<name::NameComponent>();
+	world.register::<texture::TextureComponent>();
+
+	world.insert(delta_time::DeltaTime(0.0));
+	world.insert(keystate::Keystate::default());
+
+	world
+		.create_entity()
+		.with(transformation::TransformationComponent(glm::mat4(
+			0.0, 0.0, 0.0, 0.0, //
+			0.0, 0.0, 0.0, 0.0, //
+			0.0, 0.0, 0.0, 0.0, //
+			0.0, 0.0, 0.0, 0.0, //
+		)))
+		.with(name::NameComponent("Alpha".to_string()))
+		.build();
+
+	let mut dispatcher = DispatcherBuilder::new()
+		.with_thread_local(render::RenderSystem)
+		.with(logger::LoggerSystem, "logger_system", &[])
+		.with(gravity::GravitySystem, "gravity_system", &[])
+		.build();
+	dispatcher.setup(&mut world);
+
+	let mut last_frame = glfw.get_time();
+
 	while !window.should_close() {
-		let current_frame = glfw.get_time() as f32;
-		let delta_time = current_frame - last_frame;
-		last_frame = current_frame;
+		let current_time = glfw.get_time();
+		let delta_time = current_time - last_frame;
+		{
+			let mut delta = world.write_resource::<delta_time::DeltaTime>();
+			*delta = delta_time::DeltaTime(delta_time);
+		}
+		last_frame = current_time;
+		dispatcher.dispatch(&world);
 
-		let (mouse_x, mouse_y) = window.get_cursor_pos();
-		let (delta_x, delta_y) = (last_pos.0 - mouse_x, last_pos.1 - mouse_y);
-		last_pos = (mouse_x, mouse_y);
-
-		process_input(
-			&mut window,
-			&mut world,
-			delta_time,
-			(delta_x as f32, delta_y as f32),
-		);
 		process_events(&mut window, &events);
-
-		let (window_width, window_height) = window.get_size();
-		let projection = glm::perspective(
-			(window_width as f32) / (window_height as f32),
-			world.camera.zoom,
-			0.1,
-			10000.0,
-		);
-
 		unsafe {
-			gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+			gl::ClearColor(1.0, 0.5, 0.3, 1.0);
 			gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-
-			use crate::object::ObjSettings;
-			let wall_settings = ObjSettings {
-				texture: &wall,
-				raw_pixels: &wall_data,
-				shader: &shader,
-			};
-
-			let raster_settings = crate::rasterizable::RasterSettings {
-				projection,
-				specifics: wall_settings,
-			};
-
-			cube.rasterize(&world, &raster_settings);
-			teapot.rasterize(&world, &raster_settings);
 		}
 
 		window.swap_buffers();
@@ -141,34 +123,4 @@ fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::Windo
 			_ => {}
 		}
 	}
-}
-
-fn process_input(
-	window: &mut glfw::Window,
-	mut world: &mut World,
-	delta_time: f32,
-	(delta_x, delta_y): (f32, f32),
-) {
-	world.camera.speed = if window.get_key(Key::LeftShift) == Action::Press {
-		100.0
-	} else {
-		1.0
-	};
-	if window.get_key(Key::W) == Action::Press {
-		world.camera.do_move(CameraDirection::Forward, delta_time)
-	}
-	if window.get_key(Key::A) == Action::Press {
-		world.camera.do_move(CameraDirection::Left, delta_time)
-	}
-	if window.get_key(Key::S) == Action::Press {
-		world.camera.do_move(CameraDirection::Backward, delta_time)
-	}
-	if window.get_key(Key::D) == Action::Press {
-		world.camera.do_move(CameraDirection::Right, delta_time)
-	}
-
-	window.set_cursor_mode(glfw::CursorMode::Disabled);
-	world
-		.camera
-		.do_rotate(glm::vec2(-delta_x / 10.0, delta_y / 10.0));
 }

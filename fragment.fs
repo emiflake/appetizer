@@ -2,11 +2,11 @@
 out vec4 FragColor;
 uniform float our_color;
 in vec2 TexCoord;
-in vec3 Normal;  
+in vec3 Normal;
 
 uniform sampler2D ourTexture;
-uniform vec3 light_pos;  
-uniform vec3 light_color;  
+uniform vec3 light_pos;
+uniform vec3 light_color;
 uniform vec3 camera_pos;
 
 in vec3 FragPos;
@@ -16,7 +16,7 @@ void main() {
 	vec3 norm = normalize(Normal);
 
 	// FragPos (position of hit) to light
-	vec3 light_dir = normalize(light_pos - FragPos);  
+	vec3 light_dir = normalize(light_pos - FragPos);
 
 	// Check how 'close' the normal and the light is
 	// the closer, the more light it has
@@ -31,7 +31,7 @@ void main() {
 	float spec = pow(max(dot(view_dir, reflect_dir), 0.0), 32);
 	float specular_strength = 0.5;
 
-	vec3 specular = specular_strength * spec * light_color;  
+	vec3 specular = specular_strength * spec * light_color;
 
 	vec3 eqn = ambient + diffuse + specular;
 

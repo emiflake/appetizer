@@ -1,9 +1,9 @@
 #[derive(Debug)]
 #[repr(C)]
 pub struct Vertex {
-	pub position: glm::Vec3,
-	pub normal: glm::Vec3,
-	pub uv: glm::Vec2,
+    pub position: glm::Vec3,
+    pub normal: glm::Vec3,
+    pub uv: glm::Vec2,
 }
 
 #[derive(Debug)]
@@ -13,52 +13,52 @@ pub struct VertexIndex(pub u32, pub u32, pub u32);
 #[derive(Debug)]
 #[repr(C)]
 pub struct Object {
-	pub vertexes: Vec<Vertex>,
-	pub triangle_indices: Vec<VertexIndex>,
-	pub model: glm::Mat4,
+    pub vertexes: Vec<Vertex>,
+    pub triangle_indices: Vec<VertexIndex>,
+    pub model: glm::Mat4,
 }
 
 impl Object {
-	#[allow(dead_code)]
-	fn get_indices(&self) -> Vec<u32> {
-		let mut v = Vec::new();
-		for i in &self.triangle_indices {
-			v.push(i.0);
-			v.push(i.1);
-			v.push(i.2);
-		}
-		v
-	}
-	#[allow(dead_code)]
-	fn get_vertices(&self) -> Vec<f32> {
-		let mut v = Vec::new();
-		for vertex in &self.vertexes {
-			v.push(vertex.position.x);
-			v.push(vertex.position.y);
-			v.push(vertex.position.z);
-			v.push(vertex.normal.x);
-			v.push(vertex.normal.y);
-			v.push(vertex.normal.z);
-			v.push(vertex.uv.x);
-			v.push(vertex.uv.y);
-		}
-		v
-	}
+    #[allow(dead_code)]
+    fn get_indices(&self) -> Vec<u32> {
+        let mut v = Vec::new();
+        for i in &self.triangle_indices {
+            v.push(i.0);
+            v.push(i.1);
+            v.push(i.2);
+        }
+        v
+    }
+    #[allow(dead_code)]
+    fn get_vertices(&self) -> Vec<f32> {
+        let mut v = Vec::new();
+        for vertex in &self.vertexes {
+            v.push(vertex.position.x);
+            v.push(vertex.position.y);
+            v.push(vertex.position.z);
+            v.push(vertex.normal.x);
+            v.push(vertex.normal.y);
+            v.push(vertex.normal.z);
+            v.push(vertex.uv.x);
+            v.push(vertex.uv.y);
+        }
+        v
+    }
 }
 
 impl Default for Object {
-	fn default() -> Self {
-		Self {
-			vertexes: Vec::new(),
-			triangle_indices: Vec::new(),
-			model: glm::mat4(
-				1.0, 0.0, 0.0, 0.0, //
-				0.0, 1.0, 0.0, 0.0, //
-				0.0, 0.0, 1.0, 0.0, //
-				0.0, 0.0, 0.0, 1.0, //
-			),
-		}
-	}
+    fn default() -> Self {
+        Self {
+            vertexes: Vec::new(),
+            triangle_indices: Vec::new(),
+            model: glm::mat4(
+                1.0, 0.0, 0.0, 0.0, //
+                0.0, 1.0, 0.0, 0.0, //
+                0.0, 0.0, 1.0, 0.0, //
+                0.0, 0.0, 0.0, 1.0, //
+            ),
+        }
+    }
 }
 
 // pub struct BakedObject {

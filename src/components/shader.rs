@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use specs::prelude::*;
+
 use gl::types::*;
 
 use std::fs::File;
@@ -16,9 +18,11 @@ pub enum ShaderError {
     CompileError(String),
 }
 
-pub struct Shader(pub u32);
+#[derive(Component, Debug, Ord, PartialOrd, PartialEq, Eq, Copy, Clone)]
+#[storage(VecStorage)]
+pub struct ShaderComponent(pub u32);
 
-impl Shader {
+impl ShaderComponent {
     pub fn new(vertex_path: &str, fragment_path: &str) -> std::result::Result<Self, ShaderError> {
         let mut vertex_file = File::open(vertex_path).map_err(ShaderError::LoadError)?;
         let mut vertex_reader = BufReader::new(&mut vertex_file);

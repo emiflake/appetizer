@@ -1,5 +1,5 @@
-use specs::{Component, VecStorage};
 use crate::object::Object;
+use specs::{Component, VecStorage};
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]

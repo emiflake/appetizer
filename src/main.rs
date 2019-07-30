@@ -59,12 +59,12 @@ pub fn main() -> Result<(), String> {
 	}
 
 	// Initialized everything
-
 	let mut world: World = World::new();
 	world.register::<transformation::TransformationComponent>();
 	world.register::<model::ModelComponent>();
 	world.register::<name::NameComponent>();
 	world.register::<texture::TextureComponent>();
+	world.register::<shader::ShaderComponent>();
 
 	world.insert(delta_time::DeltaTime(0.0));
 	world.insert(keystate::Keystate::default());
@@ -107,7 +107,10 @@ pub fn main() -> Result<(), String> {
 		last_frame = current_time;
 		dispatcher.dispatch(&world);
 
-		process_events(&mut window, &events);
+		{
+			let mut keystate = world.write_resource::<keystate::Keystate>();
+			process_events(&mut window, &events, &mut keystate);
+		}
 		unsafe {
 			gl::ClearColor(1.0, 0.5, 0.3, 1.0);
 			gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
@@ -120,14 +123,24 @@ pub fn main() -> Result<(), String> {
 	Ok(())
 }
 
-fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>) {
+fn process_events(
+	window: &mut glfw::Window,
+	events: &Receiver<(f64, glfw::WindowEvent)>,
+	keystate: &mut keystate::Keystate,
+) {
 	for (_, event) in glfw::flush_messages(events) {
 		match event {
 			glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
 				gl::Viewport(0, 0, width, height)
 			},
-			glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-				window.set_should_close(true)
+			glfw::WindowEvent::Key(key, _, Action::Release, _) => {
+				keystate.set_key_up(key);
+			}
+			glfw::WindowEvent::Key(key, _, Action::Press, _) => {
+				keystate.set_key_down(key);
+				if key == Key::Escape {
+					window.set_should_close(true);
+				}
 			}
 			_ => {}
 		}

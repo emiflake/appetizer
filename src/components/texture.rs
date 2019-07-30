@@ -1,8 +1,9 @@
 use specs::{Component, VecStorage};
 
-#[derive(Debug)]
-pub struct Texture;
-
-#[derive(Component, Debug)]
+#[derive(Component)]
 #[storage(VecStorage)]
-pub struct TextureComponent(pub Texture);
+
+// Store OpenGL Texture handles only
+// Actual textures are stored in TextureMap,
+// As well as references to the handles
+pub struct TextureComponent(pub usize);

@@ -32,6 +32,7 @@ const SCR_HEIGHT: u32 = 720;
 pub fn main() -> Result<(), String> {
 	let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 	glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
+	glfw.window_hint(glfw::WindowHint::Samples(Some(4)));
 	glfw.window_hint(glfw::WindowHint::OpenGlProfile(
 		glfw::OpenGlProfileHint::Core,
 	));
@@ -67,6 +68,14 @@ pub fn main() -> Result<(), String> {
 
 	world.insert(delta_time::DeltaTime(0.0));
 	world.insert(keystate::Keystate::default());
+	world.insert(camera::Camera::default());
+	world.insert(texture_map::TextureMap::new());
+	world.insert(texture_map::GLTextureMap::new());
+
+	{
+		let mut texture_map = world.write_resource::<texture_map::TextureMap>();
+		texture_map.load_from_file("textures/wall.jpg".to_string())?;
+	}
 
 	world
 		.create_entity()

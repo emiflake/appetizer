@@ -9,12 +9,17 @@ extern crate specs;
 #[macro_use]
 extern crate specs_derive;
 
+extern crate shred;
+#[macro_use]
+extern crate shred_derive;
+
 use self::glfw::{Action, Context, Key};
 use std::sync::mpsc::Receiver;
 
 #[macro_use]
 mod object;
 mod macros;
+mod obj_parser;
 
 mod components;
 mod resources;
@@ -54,16 +59,23 @@ pub fn main() -> Result<(), String> {
 
 	gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
+	let shader = shader::ShaderComponent::new("vertex.vs", "fragment.fs")
+		.map_err(|e| format!("Shader error: {:?}", e))?;
+
+	let teapot = obj_parser::parse("objs/teapot.obj".to_string())
+		.map_err(|e| format!("Parser error: {:?}", e))?;
+
 	unsafe {
 		gl::Enable(gl::DEPTH_TEST);
 	}
 
 	// Initialized everything
 	let mut world: World = World::new();
+
 	world.register::<transformation::TransformationComponent>();
 	world.register::<model::ModelComponent>();
 	world.register::<name::NameComponent>();
-	world.register::<texture::TextureComponent>();
+	world.register::<texture::GLTextureComponent>();
 	world.register::<shader::ShaderComponent>();
 
 	world.insert(delta_time::DeltaTime(0.0));
@@ -76,10 +88,16 @@ pub fn main() -> Result<(), String> {
 		let mut camera = world.write_resource::<camera::Camera>();
 		camera.update_camera_vectors();
 	}
-	{
+	let texture_handle = {
 		let mut texture_map = world.write_resource::<texture_map::TextureMap>();
-		texture_map.load_from_file("textures/wall.jpg".to_string())?;
-	}
+		texture_map.load_from_file("textures/wall.jpg".to_string())?
+	};
+	let gltexture_handle = {
+		let texture_map = world.read_resource::<texture_map::TextureMap>();
+		let mut gltexture_map = world.write_resource::<texture_map::GLTextureMap>();
+
+		gltexture_map.load_from_map(&texture_map, texture_handle)?
+	};
 
 	world
 		.create_entity()
@@ -89,6 +107,9 @@ pub fn main() -> Result<(), String> {
 			0.0, 0.0, 0.0, 0.0, //
 			0.0, 0.0, 0.0, 0.0, //
 		)))
+		.with(shader)
+		.with(teapot.get_component())
+		.with(texture::GLTextureComponent(gltexture_handle))
 		.with(name::NameComponent("Alpha".to_string()))
 		.build();
 
@@ -97,6 +118,7 @@ pub fn main() -> Result<(), String> {
 		.with(logger_sys::LoggerSystem, "logger_system", &[])
 		.with(camera_sys::CameraSystem, "camera_system", &[])
 		.build();
+
 	dispatcher.setup(&mut world);
 
 	let mut last_frame = glfw.get_time();

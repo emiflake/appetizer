@@ -1,9 +1,11 @@
 use specs::{Component, VecStorage};
 
-#[derive(Component)]
-#[storage(VecStorage)]
+use crate::resources::texture_map::GLTextureHandle;
+
 
 // Store OpenGL Texture handles only
 // Actual textures are stored in TextureMap,
 // As well as references to the handles
-pub struct TextureComponent(pub usize);
+#[derive(Component)]
+#[storage(VecStorage)]
+pub struct GLTextureComponent(pub GLTextureHandle);

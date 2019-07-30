@@ -3,7 +3,7 @@ use crate::resources::*;
 use glfw::Key;
 use specs::prelude::*;
 
-use camera::{Camera, CameraDirection};
+use camera::CameraDirection;
 
 pub struct CameraSystem;
 

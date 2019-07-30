@@ -1,6 +1,8 @@
-use crate::object::Object;
 use specs::{Component, VecStorage};
 
+// Stores the VAO
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
-pub struct ModelComponent(pub Object);
+pub struct ModelComponent {
+	pub vao: u32,
+}

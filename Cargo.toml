@@ -16,6 +16,9 @@ image = "0.22.0"
 specs = "0.15.0"
 specs-derive = "0.4.0"
 
+shred = "0.9.2"
+shred-derive = "0.6.1"
+
 # Algebra!
 nalgebra = "0.18.0"
 nalgebra-glm = "0.4.0"

@@ -16,8 +16,10 @@ extern crate shred_derive;
 use self::glfw::{Action, Context, Key};
 use std::sync::mpsc::Receiver;
 
-#[macro_use]
+use std::ffi::CStr;
+
 mod object;
+#[macro_use]
 mod macros;
 mod obj_parser;
 
@@ -83,6 +85,7 @@ pub fn main() -> Result<(), String> {
 	world.insert(camera::Camera::default());
 	world.insert(texture_map::TextureMap::new());
 	world.insert(texture_map::GLTextureMap::new());
+	world.insert(projection::Projection::default());
 
 	{
 		let mut camera = world.write_resource::<camera::Camera>();
@@ -102,10 +105,10 @@ pub fn main() -> Result<(), String> {
 	world
 		.create_entity()
 		.with(transformation::TransformationComponent(glm::mat4(
-			0.0, 0.0, 0.0, 0.0, //
-			0.0, 0.0, 0.0, 0.0, //
-			0.0, 0.0, 0.0, 0.0, //
-			0.0, 0.0, 0.0, 0.0, //
+			1.0, 0.0, 0.0, 0.0, //
+			0.0, 1.0, 0.0, 0.0, //
+			0.0, 0.0, 1.0, 0.0, //
+			0.0, 0.0, 0.0, 1.0, //
 		)))
 		.with(shader)
 		.with(teapot.get_component())
@@ -136,6 +139,17 @@ pub fn main() -> Result<(), String> {
 			// Process the keystate for future ussage
 			let mut keystate = world.write_resource::<keystate::Keystate>();
 			process_events(&mut window, &events, &mut keystate);
+		}
+		let (window_width, window_height) = window.get_size();
+		{
+			let camera = world.read_resource::<camera::Camera>();
+			let mut projection = world.write_resource::<projection::Projection>();
+			projection.0 = glm::perspective(
+				(window_width as f32) / (window_height as f32),
+				camera.zoom,
+				0.1,
+				10000.0,
+			);
 		}
 
 		// Finally, let's dispatch on the world

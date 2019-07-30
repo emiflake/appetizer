@@ -4,5 +4,6 @@ use specs::{Component, VecStorage};
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
 pub struct ModelComponent {
-	pub vao: u32,
+    pub vao: u32,
+    pub length: i32,
 }

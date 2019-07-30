@@ -57,6 +57,7 @@ pub fn main() -> Result<(), String> {
 
 	window.make_current();
 	window.set_key_polling(true);
+	window.set_mouse_button_polling(true);
 	window.set_framebuffer_size_polling(true);
 
 	gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
@@ -86,6 +87,7 @@ pub fn main() -> Result<(), String> {
 	world.insert(texture_map::TextureMap::new());
 	world.insert(texture_map::GLTextureMap::new());
 	world.insert(projection::Projection::default());
+	world.insert(mousestate::MouseState::default());
 
 	{
 		let mut camera = world.write_resource::<camera::Camera>();
@@ -120,11 +122,14 @@ pub fn main() -> Result<(), String> {
 		.with_thread_local(render_sys::RenderSystem)
 		.with(logger_sys::LoggerSystem, "logger_system", &[])
 		.with(camera_sys::CameraSystem, "camera_system", &[])
+		.with(input_sys::InputSystem, "input_system", &[])
 		.build();
 
 	dispatcher.setup(&mut world);
 
 	let mut last_frame = glfw.get_time();
+
+	let mut last_pos = (0.0, 0.0);
 
 	while !window.should_close() {
 		let current_time = glfw.get_time();
@@ -135,11 +140,25 @@ pub fn main() -> Result<(), String> {
 		}
 		last_frame = current_time;
 
+		let (mouse_x, mouse_y) = window.get_cursor_pos();
+		let (delta_x, delta_y) = (last_pos.0 - mouse_x, last_pos.1 - mouse_y);
+		last_pos = (mouse_x, mouse_y);
 		{
+			let mut mousestate = world.write_resource::<mousestate::MouseState>();
+			mousestate.position = glm::vec2(mouse_x as f32, mouse_y as f32);
+			mousestate.delta = glm::vec2(delta_x as f32, delta_y as f32);
+
+			window.set_cursor_mode(if mousestate.is_locked {
+				glfw::CursorMode::Disabled
+			} else {
+				glfw::CursorMode::Normal
+			});
+
 			// Process the keystate for future ussage
 			let mut keystate = world.write_resource::<keystate::Keystate>();
-			process_events(&mut window, &events, &mut keystate);
+			process_events(&mut window, &events, &mut keystate, &mut mousestate);
 		}
+
 		let (window_width, window_height) = window.get_size();
 		{
 			let camera = world.read_resource::<camera::Camera>();
@@ -166,11 +185,12 @@ fn process_events(
 	window: &mut glfw::Window,
 	events: &Receiver<(f64, glfw::WindowEvent)>,
 	keystate: &mut keystate::Keystate,
+	mousestate: &mut mousestate::MouseState,
 ) {
 	for (_, event) in glfw::flush_messages(events) {
 		match event {
 			glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
-				gl::Viewport(0, 0, width, height)
+				gl::Viewport(0, 0, width, height);
 			},
 			glfw::WindowEvent::Key(key, _, Action::Release, _) => {
 				keystate.set_key_up(key);
@@ -181,6 +201,12 @@ fn process_events(
 					// TODO: maybe integrate into some sort of system?
 					window.set_should_close(true);
 				}
+			}
+			glfw::WindowEvent::MouseButton(button, Action::Press, _) => {
+				mousestate.set_button_down(button);
+			}
+			glfw::WindowEvent::MouseButton(button, Action::Release, _) => {
+				mousestate.set_button_up(button);
 			}
 			_ => {}
 		}

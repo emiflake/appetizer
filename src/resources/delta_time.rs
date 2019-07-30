@@ -1,2 +1,2 @@
 #[derive(Default)]
-pub struct DeltaTime(pub f64);
+pub struct DeltaTime(pub f32);

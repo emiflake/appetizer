@@ -13,10 +13,11 @@ impl<'a> System<'a> for LoggerSystem {
 		ReadStorage<'a, NameComponent>,
 		Read<'a, DeltaTime>,
 		Read<'a, Keystate>,
+		Read<'a, Camera>,
 	);
 
-	fn run(&mut self, (names, _delta_time, keystate): Self::SystemData) {
-		println!("{:?}", keystate.is_key_down(Key::Space));
+	fn run(&mut self, (names, _delta_time, _keystate, camera): Self::SystemData) {
+		println!("{:?},", *camera);
 		for NameComponent(_name) in names.join() {}
 	}
 }

@@ -73,6 +73,10 @@ pub fn main() -> Result<(), String> {
 	world.insert(texture_map::GLTextureMap::new());
 
 	{
+		let mut camera = world.write_resource::<camera::Camera>();
+		camera.update_camera_vectors();
+	}
+	{
 		let mut texture_map = world.write_resource::<texture_map::TextureMap>();
 		texture_map.load_from_file("textures/wall.jpg".to_string())?;
 	}
@@ -89,9 +93,9 @@ pub fn main() -> Result<(), String> {
 		.build();
 
 	let mut dispatcher = DispatcherBuilder::new()
-		.with_thread_local(render::RenderSystem)
-		.with(logger::LoggerSystem, "logger_system", &[])
-		.with(gravity::GravitySystem, "gravity_system", &[])
+		.with_thread_local(render_sys::RenderSystem)
+		.with(logger_sys::LoggerSystem, "logger_system", &[])
+		.with(camera_sys::CameraSystem, "camera_system", &[])
 		.build();
 	dispatcher.setup(&mut world);
 
@@ -99,22 +103,21 @@ pub fn main() -> Result<(), String> {
 
 	while !window.should_close() {
 		let current_time = glfw.get_time();
-		let delta_time = current_time - last_frame;
+		let delta_time = (current_time - last_frame) as f32;
 		{
 			let mut delta = world.write_resource::<delta_time::DeltaTime>();
 			*delta = delta_time::DeltaTime(delta_time);
 		}
 		last_frame = current_time;
-		dispatcher.dispatch(&world);
 
 		{
+			// Process the keystate for future ussage
 			let mut keystate = world.write_resource::<keystate::Keystate>();
 			process_events(&mut window, &events, &mut keystate);
 		}
-		unsafe {
-			gl::ClearColor(1.0, 0.5, 0.3, 1.0);
-			gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-		}
+
+		// Finally, let's dispatch on the world
+		dispatcher.dispatch(&world);
 
 		window.swap_buffers();
 		glfw.poll_events();
@@ -139,6 +142,7 @@ fn process_events(
 			glfw::WindowEvent::Key(key, _, Action::Press, _) => {
 				keystate.set_key_down(key);
 				if key == Key::Escape {
+					// TODO: maybe integrate into some sort of system?
 					window.set_should_close(true);
 				}
 			}

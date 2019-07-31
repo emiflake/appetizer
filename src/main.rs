@@ -17,6 +17,7 @@ use self::glfw::{Action, Context, Key};
 use std::sync::mpsc::Receiver;
 
 use std::ffi::CStr;
+use std::thread;
 
 mod object;
 #[macro_use]
@@ -175,6 +176,7 @@ pub fn main() -> Result<(), String> {
 		dispatcher.dispatch(&world);
 
 		window.swap_buffers();
+		thread::sleep(std::time::Duration::from_millis(16));
 		glfw.poll_events();
 	}
 

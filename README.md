@@ -5,8 +5,8 @@ It uses ECS for managing the world state and entities.
 # Usage
 In order to test the current state of the engine, you must run these commands.
 ```
-git clone git@github.com:emiflake/opengl-appetizer.git
-cd opengl-appetizer
+git clone git@github.com:emiflake/appetizer.git
+cd appetizer
 cargo run
 ```
 # ECS

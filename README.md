@@ -1,4 +1,4 @@
-# Unnamed
+# Appetizer
 A work in progress OpenGL Game Engine, written in Rust. 
 It uses ECS for managing the world state and entities.
 

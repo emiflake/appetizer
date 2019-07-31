@@ -1,5 +1,5 @@
 [package]
-name = "opengl-appetizer"
+name = "appetizer"
 version = "0.1.0"
 authors = ["Emily Martins <emily.flakeheart@gmail.com>"]
 edition = "2018"

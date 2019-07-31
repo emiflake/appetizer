@@ -101,7 +101,7 @@ pub fn main() -> Result<(), String> {
 	}
 	let white_texture_handle = {
 		let mut texture_map = world.write_resource::<texture_map::TextureMap>();
-		texture_map.load_from_file("textures/white.png".to_string())?
+		texture_map.load_from_file("assets/textures/white.png".to_string())?
 	};
 	let white_gltexture_handle = {
 		let texture_map = world.read_resource::<texture_map::TextureMap>();
@@ -111,7 +111,7 @@ pub fn main() -> Result<(), String> {
 	};
 	let wall_texture_handle = {
 		let mut texture_map = world.write_resource::<texture_map::TextureMap>();
-		texture_map.load_from_file("textures/wall.jpg".to_string())?
+		texture_map.load_from_file("assets/textures/wall.jpg".to_string())?
 	};
 	let wall_gltexture_handle = {
 		let texture_map = world.read_resource::<texture_map::TextureMap>();

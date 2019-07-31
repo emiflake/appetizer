@@ -89,6 +89,7 @@ pub fn main() -> Result<(), String> {
 	world.insert(texture_map::GLTextureMap::new());
 	world.insert(projection::Projection::default());
 	world.insert(mousestate::MouseState::default());
+	world.insert(time::CurrentTime::default());
 
 	{
 		let mut camera = world.write_resource::<camera::Camera>();
@@ -138,6 +139,10 @@ pub fn main() -> Result<(), String> {
 		{
 			let mut delta = world.write_resource::<delta_time::DeltaTime>();
 			*delta = delta_time::DeltaTime(delta_time);
+		}
+		{
+			let mut t = world.write_resource::<time::CurrentTime>();
+			*t = time::CurrentTime(current_time);
 		}
 		last_frame = current_time;
 

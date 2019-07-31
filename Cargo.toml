@@ -7,8 +7,15 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-glfw = "0.30.0"
+# glfw = "0.30.0"
 gl = "0.13.0"
+glutin = "0.21.0"
+glium = "0.25.1"
+
+imgui = "0.1.0"
+imgui-glium-renderer = "0.1.0"
+imgui-winit-support = "0.1.0"
+
 # Loading textures
 image = "0.22.0"
 

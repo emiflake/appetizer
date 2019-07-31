@@ -16,12 +16,12 @@ fn register_components(mut world: &mut World) {
 
 fn insert_resources(mut world: &mut World) {
 	world.insert(delta_time::DeltaTime(0.0));
-	world.insert(key_state::Keystate::default());
+	// world.insert(key_state::Keystate::default());
 	world.insert(camera::Camera::default());
 	world.insert(texture_map::TextureMap::new());
 	world.insert(texture_map::GLTextureMap::new());
 	world.insert(projection::Projection::default());
-	world.insert(mouse_state::MouseState::default());
+	// world.insert(mouse_state::MouseState::default());
 	world.insert(time::CurrentTime::default());
 }
 

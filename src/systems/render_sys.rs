@@ -35,6 +35,9 @@ impl<'a> System<'a> for RenderSystem {
 			gl::ClearColor(0.0, 0.0, 0.0, 1.0);
 			gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 		}
+
+		let camera_mat = render_data.camera.get_view_matrix();
+
 		for (trans, model, shader, texture, material) in (
 			&render_data.trans,
 			&render_data.model,
@@ -79,12 +82,8 @@ impl<'a> System<'a> for RenderSystem {
 					shader.set_vector3(c_str!("material.specular"), &material.specular);
 					shader.set_float(c_str!("material.shininess"), material.shininess);
 
+					shader.set_mat4(c_str!("camera"), &camera_mat);
 					shader.set_vector3(c_str!("camera_pos"), &render_data.camera.position);
-					shader.set_vector3(
-						c_str!("camera_tgt"),
-						&(render_data.camera.front + render_data.camera.position),
-					);
-					shader.set_vector3(c_str!("camera_up"), &render_data.camera.up);
 
 					gl::BindTexture(gl::TEXTURE_2D, handle);
 

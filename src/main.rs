@@ -68,6 +68,8 @@ pub fn main() -> Result<(), String> {
 
 	let teapot = obj_parser::parse("objs/teapot.obj".to_string())
 		.map_err(|e| format!("Parser error: {:?}", e))?;
+	let cube = obj_parser::parse("objs/cube.obj".to_string())
+		.map_err(|e| format!("Parser error: {:?}", e))?;
 
 	unsafe {
 		gl::Enable(gl::DEPTH_TEST);
@@ -81,6 +83,8 @@ pub fn main() -> Result<(), String> {
 	world.register::<name::NameComponent>();
 	world.register::<texture::GLTextureComponent>();
 	world.register::<shader::ShaderComponent>();
+	world.register::<material::MaterialComponent>();
+	world.register::<light::LightComponent>();
 
 	world.insert(delta_time::DeltaTime(0.0));
 	world.insert(keystate::Keystate::default());
@@ -95,15 +99,25 @@ pub fn main() -> Result<(), String> {
 		let mut camera = world.write_resource::<camera::Camera>();
 		camera.update_camera_vectors();
 	}
-	let texture_handle = {
+	let white_texture_handle = {
 		let mut texture_map = world.write_resource::<texture_map::TextureMap>();
-		texture_map.load_from_file("textures/wall.jpg".to_string())?
+		texture_map.load_from_file("textures/white.png".to_string())?
 	};
-	let gltexture_handle = {
+	let white_gltexture_handle = {
 		let texture_map = world.read_resource::<texture_map::TextureMap>();
 		let mut gltexture_map = world.write_resource::<texture_map::GLTextureMap>();
 
-		gltexture_map.load_from_map(&texture_map, texture_handle)?
+		gltexture_map.load_from_map(&texture_map, white_texture_handle)?
+	};
+	let wall_texture_handle = {
+		let mut texture_map = world.write_resource::<texture_map::TextureMap>();
+		texture_map.load_from_file("textures/wall.jpg".to_string())?
+	};
+	let wall_gltexture_handle = {
+		let texture_map = world.read_resource::<texture_map::TextureMap>();
+		let mut gltexture_map = world.write_resource::<texture_map::GLTextureMap>();
+
+		gltexture_map.load_from_map(&texture_map, wall_texture_handle)?
 	};
 
 	world
@@ -114,10 +128,41 @@ pub fn main() -> Result<(), String> {
 			0.0, 0.0, 1.0, 0.0, //
 			0.0, 0.0, 0.0, 1.0, //
 		)))
+		.with(material::MaterialComponent {
+			ambient: glm::vec3(0.1, 0.1, 0.1),
+			diffuse: glm::vec3(0.5, 0.5, 0.5),
+			specular: glm::vec3(0.8, 0.8, 0.8),
+			shininess: 32.0,
+		})
 		.with(shader)
 		.with(teapot.get_component())
-		.with(texture::GLTextureComponent(gltexture_handle))
+		.with(texture::GLTextureComponent(wall_gltexture_handle))
 		.with(name::NameComponent("Alpha".to_string()))
+		.build();
+
+	world
+		.create_entity()
+		.with(transformation::TransformationComponent::from_pos(
+			glm::vec3(0.0, 1000.0, 0.0),
+		))
+		.with(shader)
+		.with(material::MaterialComponent {
+			ambient: glm::vec3(1.0, 0.5, 0.5),
+			diffuse: glm::vec3(0.0, 0.0, 0.0),
+			specular: glm::vec3(0.0, 0.0, 0.0),
+			shininess: 32.0,
+		})
+		.with(cube.get_component())
+		.with(texture::GLTextureComponent(white_gltexture_handle))
+		.with(light::LightComponent(light::Light::PointLight {
+			ambient: glm::vec3(1.0, 1.0, 1.0),
+			diffuse: glm::vec3(1.0, 1.0, 1.0),
+			specular: glm::vec3(1.0, 1.0, 1.0),
+			constant: 1.0,
+			linear: 0.09,
+			quadratic: 0.032,
+		}))
+		.with(name::NameComponent("Random Light".to_string()))
 		.build();
 
 	let mut dispatcher = DispatcherBuilder::new()

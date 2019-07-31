@@ -1,5 +1,9 @@
 use crate::components::{
-	model::ModelComponent, shader::ShaderComponent, texture::GLTextureComponent,
+	light::{Light, LightComponent},
+	material::MaterialComponent,
+	model::ModelComponent,
+	shader::ShaderComponent,
+	texture::GLTextureComponent,
 	transformation::TransformationComponent,
 };
 
@@ -19,6 +23,8 @@ pub struct RenderData<'a> {
 	pub gltexture_map: Read<'a, GLTextureMap>,
 	pub camera: Read<'a, Camera>,
 	pub projection: Read<'a, Projection>,
+	pub material: ReadStorage<'a, MaterialComponent>,
+	pub lights: ReadStorage<'a, LightComponent>,
 }
 
 impl<'a> System<'a> for RenderSystem {
@@ -29,11 +35,12 @@ impl<'a> System<'a> for RenderSystem {
 			gl::ClearColor(0.0, 0.0, 0.0, 1.0);
 			gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 		}
-		for (trans, model, shader, texture) in (
+		for (trans, model, shader, texture, material) in (
 			&render_data.trans,
 			&render_data.model,
 			&render_data.shader,
 			&render_data.texture,
+			&render_data.material,
 		)
 			.join()
 		{
@@ -43,8 +50,34 @@ impl<'a> System<'a> for RenderSystem {
 					shader.set_mat4(c_str!("model"), &trans.0);
 					shader.set_mat4(c_str!("projection"), &render_data.projection.0);
 
-					shader.set_vec3(c_str!("light_pos"), 0.0, 50.0, 50.0);
-					shader.set_vec3(c_str!("light_color"), 1.0, 1.0, 1.0);
+					for (trans, light) in (&render_data.trans, &render_data.lights).join() {
+						let pos = trans.get_pos();
+
+						match light.0 {
+							Light::PointLight {
+								ambient,
+								diffuse,
+								specular,
+								constant,
+								linear,
+								quadratic,
+								..
+							} => {
+								shader.set_vector3(c_str!("point_light.position"), &pos);
+								shader.set_vector3(c_str!("point_light.ambient"), &ambient);
+								shader.set_vector3(c_str!("point_light.diffuse"), &diffuse);
+								shader.set_vector3(c_str!("point_light.specular"), &specular);
+								shader.set_float(c_str!("point_light.constant"), constant);
+								shader.set_float(c_str!("point_light.linear"), linear);
+								shader.set_float(c_str!("point_light.quadratic"), quadratic);
+							}
+						}
+					}
+
+					shader.set_vector3(c_str!("material.ambient"), &material.ambient);
+					shader.set_vector3(c_str!("material.diffuse"), &material.diffuse);
+					shader.set_vector3(c_str!("material.specular"), &material.specular);
+					shader.set_float(c_str!("material.shininess"), material.shininess);
 
 					shader.set_vector3(c_str!("camera_pos"), &render_data.camera.position);
 					shader.set_vector3(

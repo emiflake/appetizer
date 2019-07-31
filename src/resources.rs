@@ -4,5 +4,7 @@
 pub mod camera;
 pub mod delta_time;
 pub mod keystate;
+pub mod mousestate;
+pub mod projection;
 pub mod texture_map;
 pub mod time;

@@ -87,12 +87,12 @@ pub fn main() -> Result<(), String> {
 	world.register::<light::LightComponent>();
 
 	world.insert(delta_time::DeltaTime(0.0));
-	world.insert(keystate::Keystate::default());
+	world.insert(key_state::Keystate::default());
 	world.insert(camera::Camera::default());
 	world.insert(texture_map::TextureMap::new());
 	world.insert(texture_map::GLTextureMap::new());
 	world.insert(projection::Projection::default());
-	world.insert(mousestate::MouseState::default());
+	world.insert(mouse_state::MouseState::default());
 	world.insert(time::CurrentTime::default());
 
 	{
@@ -195,19 +195,19 @@ pub fn main() -> Result<(), String> {
 		let (delta_x, delta_y) = (last_pos.0 - mouse_x, last_pos.1 - mouse_y);
 		last_pos = (mouse_x, mouse_y);
 		{
-			let mut mousestate = world.write_resource::<mousestate::MouseState>();
-			mousestate.position = glm::vec2(mouse_x as f32, mouse_y as f32);
-			mousestate.delta = glm::vec2(delta_x as f32, delta_y as f32);
+			let mut mouse_state = world.write_resource::<mouse_state::MouseState>();
+			mouse_state.position = glm::vec2(mouse_x as f32, mouse_y as f32);
+			mouse_state.delta = glm::vec2(delta_x as f32, delta_y as f32);
 
-			window.set_cursor_mode(if mousestate.is_locked {
+			window.set_cursor_mode(if mouse_state.is_locked {
 				glfw::CursorMode::Disabled
 			} else {
 				glfw::CursorMode::Normal
 			});
 
-			// Process the keystate for future ussage
-			let mut keystate = world.write_resource::<keystate::Keystate>();
-			process_events(&mut window, &events, &mut keystate, &mut mousestate);
+			// Process the key_state for future ussage
+			let mut key_state = world.write_resource::<key_state::Keystate>();
+			process_events(&mut window, &events, &mut key_state, &mut mouse_state);
 		}
 
 		let (window_width, window_height) = window.get_size();
@@ -236,8 +236,8 @@ pub fn main() -> Result<(), String> {
 fn process_events(
 	window: &mut glfw::Window,
 	events: &Receiver<(f64, glfw::WindowEvent)>,
-	keystate: &mut keystate::Keystate,
-	mousestate: &mut mousestate::MouseState,
+	key_state: &mut key_state::Keystate,
+	mouse_state: &mut mouse_state::MouseState,
 ) {
 	for (_, event) in glfw::flush_messages(events) {
 		match event {
@@ -245,20 +245,20 @@ fn process_events(
 				gl::Viewport(0, 0, width, height);
 			},
 			glfw::WindowEvent::Key(key, _, Action::Release, _) => {
-				keystate.set_key_up(key);
+				key_state.set_key_up(key);
 			}
 			glfw::WindowEvent::Key(key, _, Action::Press, _) => {
-				keystate.set_key_down(key);
+				key_state.set_key_down(key);
 				if key == Key::Escape {
 					// TODO: maybe integrate into some sort of system?
 					window.set_should_close(true);
 				}
 			}
 			glfw::WindowEvent::MouseButton(button, Action::Press, _) => {
-				mousestate.set_button_down(button);
+				mouse_state.set_button_down(button);
 			}
 			glfw::WindowEvent::MouseButton(button, Action::Release, _) => {
-				mousestate.set_button_up(button);
+				mouse_state.set_button_up(button);
 			}
 			_ => {}
 		}

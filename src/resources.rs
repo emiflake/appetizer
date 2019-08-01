@@ -3,8 +3,8 @@
 
 pub mod camera;
 pub mod delta_time;
-// pub mod key_state;
-// pub mod mouse_state;
+pub mod key_state;
+pub mod mouse_state;
 pub mod projection;
 pub mod texture_map;
 pub mod time;

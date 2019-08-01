@@ -2,7 +2,8 @@ use crate::components::{
 	light::LightComponent, name::NameComponent, transformation::TransformationComponent,
 };
 use crate::resources::{
-	camera::Camera, delta_time::DeltaTime,
+	camera::Camera,
+	delta_time::DeltaTime,
 	//  key_state::Keystate, texture_map::TextureMap,
 	time::CurrentTime,
 };

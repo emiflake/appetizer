@@ -4,6 +4,8 @@ use std::ffi::c_void;
 use std::mem;
 use std::ptr;
 
+use glium::implement_vertex;
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct Vertex {
@@ -11,6 +13,15 @@ pub struct Vertex {
 	pub normal: glm::Vec3,
 	pub uv: glm::Vec2,
 }
+
+#[derive(Copy, Clone, Debug)]
+pub struct VertexArray {
+	pub position: [f32; 3],
+	pub normal: [f32; 3],
+	pub uv: [f32; 2],
+}
+
+implement_vertex!(VertexArray, position, normal, uv);
 
 #[derive(Debug)]
 #[repr(C)]
@@ -26,79 +37,16 @@ pub struct Object {
 
 impl Object {
 	#[allow(dead_code)]
-	fn get_indices(&self) -> Vec<u32> {
-		let mut v = Vec::new();
-		for i in &self.triangle_indices {
-			v.push(i.0);
-			v.push(i.1);
-			v.push(i.2);
-		}
-		v
-	}
-	#[allow(dead_code)]
-	fn get_vertices(&self) -> Vec<f32> {
+	pub fn get_component(&self) -> ModelComponent {
 		let mut v = Vec::new();
 		for vertex in &self.vertexes {
-			v.push(vertex.position.x);
-			v.push(vertex.position.y);
-			v.push(vertex.position.z);
-			v.push(vertex.normal.x);
-			v.push(vertex.normal.y);
-			v.push(vertex.normal.z);
-			v.push(vertex.uv.x);
-			v.push(vertex.uv.y);
+			v.push(VertexArray {
+				position: [vertex.position.x, vertex.position.y, vertex.position.z],
+				normal: [vertex.normal.x, vertex.normal.y, vertex.normal.z],
+				uv: [vertex.uv.x, vertex.uv.y,],
+			});
 		}
-		v
-	}
-	pub fn get_component(&self) -> ModelComponent {
-		unsafe {
-			let vertices = self.get_vertices();
-
-			let (mut vbo, mut vao) = (0, 0);
-			gl::GenVertexArrays(1, &mut vao);
-			gl::GenBuffers(1, &mut vbo);
-
-			gl::BindVertexArray(vao);
-
-			gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-			gl::BufferData(
-				gl::ARRAY_BUFFER,
-				(vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-				&vertices[0] as *const f32 as *const c_void,
-				gl::STATIC_DRAW,
-			);
-
-			// Dependent on the size of each vertex, currently: pos(3) + normal(3) = uv(2) = 8
-			let stride_elems = 8usize;
-			let stride = (stride_elems as i32) * mem::size_of::<GLfloat>() as GLsizei;
-
-			gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, ptr::null());
-			gl::EnableVertexAttribArray(0);
-			gl::VertexAttribPointer(
-				1,
-				3,
-				gl::FLOAT,
-				gl::FALSE,
-				stride,
-				(3 * mem::size_of::<GLfloat>()) as *const c_void,
-			);
-			gl::EnableVertexAttribArray(1);
-			gl::VertexAttribPointer(
-				2,
-				2,
-				gl::FLOAT,
-				gl::FALSE,
-				stride,
-				(6 * mem::size_of::<GLfloat>()) as *const c_void,
-			);
-			gl::EnableVertexAttribArray(2);
-
-			use std::convert::TryInto;
-			ModelComponent {
-				vao,
-				length: (vertices.len() / stride_elems).try_into().unwrap(),
-			}
-		}
+		ModelComponent{ vertices: v, indices: glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList)}
 	}
 }
 
@@ -116,13 +64,3 @@ impl Default for Object {
 		}
 	}
 }
-
-// 			// Render portion
-// 			gl::BindTexture(gl::TEXTURE_2D, texture);
-
-// 			gl::BindVertexArray(vao);
-// 			gl::DrawArrays(
-// 				gl::TRIANGLES,
-// 				0,
-// 				(vertices.len() / stride_elems).try_into().unwrap(),
-// 			);

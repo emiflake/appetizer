@@ -26,6 +26,7 @@ use std::time::Instant;
 
 use std::ffi::CStr;
 use std::fs;
+use std::io::Cursor;
 use std::thread;
 
 mod object;
@@ -64,7 +65,7 @@ const SCR_HEIGHT: u32 = 720;
 pub fn main() -> Result<(), String> {
 	let mut event_loop = glutin::EventsLoop::new();
 	let wb = glutin::WindowBuilder::new();
-	let cb = glutin::ContextBuilder::new();
+	let cb = glutin::ContextBuilder::new().with_depth_buffer(24);
 	let display = glium::Display::new(wb, cb, &event_loop).unwrap();
 
 	gl::load_with(|s| display.gl_window().get_proc_address(&s) as _);
@@ -94,11 +95,21 @@ pub fn main() -> Result<(), String> {
 
 	let vertex_shader = fs::read_to_string("./vertex.vs").expect("Can't read vertex shader");
 	let fragment_shader = fs::read_to_string("./fragment.fs").expect("Can't read fragment shader");
+	let image = image::load(
+		Cursor::new(&include_bytes!("../assets/textures/wall.jpg")[..]),
+		image::JPEG,
+	)
+	.unwrap()
+	.to_rgba();
+	let image_dimensions = image.dimensions();
+	let image =
+		glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+	let texture = glium::texture::Texture2d::new(&display, image).unwrap();
 
 	let program =
 		glium::Program::from_source(&display, &vertex_shader, &fragment_shader, None).unwrap();
 
-	let mut last_fram = Instant::now();
+	let mut last_frame = Instant::now();
 	let mut cursor_pos = (0.0, 0.0);
 	let mut last_pos = (0.0, 0.0);
 	let mut closed = false;
@@ -125,10 +136,10 @@ pub fn main() -> Result<(), String> {
 			mouse_state.delta = glm::vec2(delta_x as f32, delta_y as f32);
 
 			if mouse_state.is_locked {
-				window.grab_cursor(true)?;
+				// window.grab_cursor(true)?;
 				window.hide_cursor(true);
 			} else {
-				window.grab_cursor(false)?;
+				// window.grab_cursor(false)?;
 				window.hide_cursor(false);
 			}
 
@@ -187,32 +198,33 @@ pub fn main() -> Result<(), String> {
 			.build(|| ui.text(format!("FPS: {:.2}", 1.0 / delta_time)));
 
 		let mut target = display.draw();
-		target.clear_color_srgb(0.0, 0.0, 0.0, 1.0);
+		target.clear_color_srgb_and_depth((0.0, 0.0, 0.0, 1.0), 24.0);
 		// SCENE RENDER
 		{
 			let trans = world.read_component::<transformation::TransformationComponent>();
 			let models = world.read_component::<model::ModelComponent>();
-			let textures = world.read_component::<texture::GLTextureComponent>();
 			let materials = world.read_component::<material::MaterialComponent>();
 			let camera = world.read_resource::<camera::Camera>();
 			let projection = world.read_resource::<projection::Projection>();
 
-			for (trans, model, texture, material) in (&trans, &models, &textures, &materials).join()
-			{
+			for (trans, model, material) in (&trans, &models, &materials).join() {
 				let uniforms = uniform! {
 					camera: *camera.get_view_matrix().as_ref(),
 					projection: *projection.0.as_ref(),
 					model: *trans.0.as_ref(),
+					our_texture: &texture,
 				};
 				let vertex_buffer = glium::VertexBuffer::new(&display, &model.vertices).unwrap();
+				let params = glium::DrawParameters {
+					depth: glium::Depth {
+						test: glium::draw_parameters::DepthTest::IfLess,
+						write: true,
+						..Default::default()
+					},
+					..Default::default()
+				};
 				target
-					.draw(
-						&vertex_buffer,
-						&model.indices,
-						&program,
-						&uniforms,
-						&Default::default(),
-					)
+					.draw(&vertex_buffer, &model.indices, &program, &uniforms, &params)
 					.unwrap();
 			}
 		}

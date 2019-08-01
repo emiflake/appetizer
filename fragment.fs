@@ -26,7 +26,7 @@ struct PointLight {
 uniform Material material;
 uniform PointLight point_light;
 
-uniform sampler2D ourTexture;
+uniform sampler2D our_texture;
 uniform vec3 camera_pos;
 
 in vec3 FragPos;
@@ -63,8 +63,9 @@ void main() {
 	// // specular *= attenuation;
 
 	// vec3 eqn = ambient + diffuse + specular;
+	vec3 eqn = vec3(1.0);
 
-	// vec3 result = (eqn) * vec3(texture(ourTexture, TexCoord));
-	// FragColor = vec4(result, 1.0);
-	FragColor = vec4(1.0);
+	vec3 result = (eqn) * vec3(texture(our_texture, TexCoord));
+	FragColor = vec4(result, 1.0);
+	// FragColor = vec4(1.0);
 }

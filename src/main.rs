@@ -57,14 +57,16 @@ use imgui_winit_support::{HiDpiMode, WinitPlatform};
 
 use imgui::{Context, FontConfig, FontGlyphRanges, FontSource, Ui};
 
-const SCR_WIDTH: u32 = 1280;
-const SCR_HEIGHT: u32 = 720;
+const SCR_WIDTH: f64 = 1280.0;
+const SCR_HEIGHT: f64 = 720.0;
 
 /* Holy what the heck! */
 
 pub fn main() -> Result<(), String> {
 	let mut event_loop = glutin::EventsLoop::new();
-	let wb = glutin::WindowBuilder::new();
+	let wb = glutin::WindowBuilder::new()
+		.with_dimensions(glutin::dpi::LogicalSize::new(SCR_WIDTH, SCR_HEIGHT))
+		.with_title("Appetizer");
 	let cb = glutin::ContextBuilder::new().with_depth_buffer(24);
 	let display = glium::Display::new(wb, cb, &event_loop).unwrap();
 
@@ -83,8 +85,6 @@ pub fn main() -> Result<(), String> {
 	imgui.set_ini_filename(None);
 
 	let mut renderer = imgui_glium_renderer::Renderer::init(&mut imgui, &display).unwrap();
-
-	let mut last_frame = Instant::now();
 
 	let mut platform = WinitPlatform::init(&mut imgui);
 	{
@@ -110,8 +110,6 @@ pub fn main() -> Result<(), String> {
 		glium::Program::from_source(&display, &vertex_shader, &fragment_shader, None).unwrap();
 
 	let mut last_frame = Instant::now();
-	let mut cursor_pos = (0.0, 0.0);
-	let mut last_pos = (0.0, 0.0);
 	let mut closed = false;
 	while !closed {
 		let gl_window = display.gl_window();
@@ -126,27 +124,15 @@ pub fn main() -> Result<(), String> {
 		}
 
 		// EVENT LOOP
-		let (mouse_x, mouse_y) = cursor_pos;
-		let (delta_x, delta_y) = (last_pos.0 - mouse_x, last_pos.1 - mouse_y);
-
-		last_pos = (mouse_x, mouse_y);
 		{
 			let mut mouse_state = world.write_resource::<mouse_state::MouseState>();
-			mouse_state.position = glm::vec2(mouse_x as f32, mouse_y as f32);
-			mouse_state.delta = glm::vec2(delta_x as f32, delta_y as f32);
-
-			if mouse_state.is_locked {
-				// window.grab_cursor(true)?;
-				window.hide_cursor(true);
-			} else {
-				// window.grab_cursor(false)?;
-				window.hide_cursor(false);
-			}
+			mouse_state.update_delta();
 
 			// Process the key_state for future ussage
 			let mut key_state = world.write_resource::<key_state::Keystate>();
 			event_loop.poll_events(|event| {
 				platform.handle_event(imgui.io_mut(), &window, &event);
+				mouse_state.handle_event(&event);
 				match event {
 					glutin::Event::WindowEvent { event, .. } => match event {
 						glutin::WindowEvent::KeyboardInput {
@@ -161,14 +147,6 @@ pub fn main() -> Result<(), String> {
 							ElementState::Pressed => key_state.set_key_down(kc),
 							ElementState::Released => key_state.set_key_up(kc),
 						},
-						glutin::WindowEvent::MouseInput { state, button, .. } => match state {
-							ElementState::Pressed => mouse_state.set_button_down(button),
-							ElementState::Released => mouse_state.set_button_up(button),
-						},
-						glutin::WindowEvent::CursorMoved { position, .. } => {
-							cursor_pos.0 = position.x;
-							cursor_pos.1 = position.y;
-						}
 						glutin::WindowEvent::CloseRequested => closed = true,
 						_ => (),
 					},

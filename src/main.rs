@@ -33,6 +33,7 @@ mod object;
 #[macro_use]
 mod macros;
 mod obj_parser;
+mod profiler;
 
 mod components;
 mod resources;

@@ -43,10 +43,13 @@ impl Object {
 			v.push(VertexArray {
 				position: [vertex.position.x, vertex.position.y, vertex.position.z],
 				normal: [vertex.normal.x, vertex.normal.y, vertex.normal.z],
-				uv: [vertex.uv.x, vertex.uv.y,],
+				uv: [vertex.uv.x, vertex.uv.y],
 			});
 		}
-		ModelComponent{ vertices: v, indices: glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList)}
+		ModelComponent {
+			vertices: v,
+			indices: glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+		}
 	}
 }
 

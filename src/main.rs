@@ -78,7 +78,7 @@ pub fn main() -> Result<(), String> {
 		// .with_thread_local(render_sys::RenderSystem)
 		.with(logger_sys::LoggerSystem, "logger_system", &[])
 		.with(camera_sys::CameraSystem, "camera_system", &[])
-		.with(input_sys::InputSystem, "input_system", &[])
+		// .with(input_sys::InputSystem, "input_system", &[])
 		.build();
 	dispatcher.setup(&mut world);
 
@@ -129,28 +129,16 @@ pub fn main() -> Result<(), String> {
 
 		// EVENT LOOP
 		{
+			let mut key_state = world.write_resource::<key_state::Keystate>();
 			let mut mouse_state = world.write_resource::<mouse_state::MouseState>();
 			mouse_state.update_delta();
 
-			// Process the key_state for future ussage
-			let mut key_state = world.write_resource::<key_state::Keystate>();
 			event_loop.poll_events(|event| {
 				platform.handle_event(imgui.io_mut(), &window, &event);
 				mouse_state.handle_event(&event);
+				key_state.handle_event(&event);
 				match event {
 					glutin::Event::WindowEvent { event, .. } => match event {
-						glutin::WindowEvent::KeyboardInput {
-							input:
-								glutin::KeyboardInput {
-									state,
-									virtual_keycode: Some(kc),
-									..
-								},
-							..
-						} => match state {
-							ElementState::Pressed => key_state.set_key_down(kc),
-							ElementState::Released => key_state.set_key_up(kc),
-						},
 						glutin::WindowEvent::CloseRequested => closed = true,
 						_ => (),
 					},

@@ -1,5 +1,5 @@
-use std::collections::HashSet;
 use glutin::ElementState;
+use std::collections::HashSet;
 
 pub struct MouseState {
 	pub position: glm::Vec2,
@@ -46,7 +46,7 @@ impl MouseState {
 				},
 				glutin::WindowEvent::CursorMoved { position, .. } => {
 					self.position = glm::vec2(position.x as f32, position.y as f32);
-				},
+				}
 				_ => {}
 			}
 		}

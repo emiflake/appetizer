@@ -109,6 +109,8 @@ pub fn main() -> Result<(), String> {
 	let program =
 		glium::Program::from_source(&display, &vertex_shader, &fragment_shader, None).unwrap();
 
+	let mut profiler = profiler::Profiler::new(100);
+
 	let mut last_frame = Instant::now();
 	let mut closed = false;
 	while !closed {
@@ -118,6 +120,7 @@ pub fn main() -> Result<(), String> {
 		let now = Instant::now();
 		let delta = now - last_frame;
 		let delta_time = delta.as_secs() as f32 + delta.subsec_nanos() as f32 / 1_000_000_000.0;
+		profiler.record_delay(delta_time);
 		{
 			let mut delta = world.write_resource::<delta_time::DeltaTime>();
 			*delta = delta_time::DeltaTime(delta_time);
@@ -171,9 +174,7 @@ pub fn main() -> Result<(), String> {
 		let io = imgui.io_mut();
 		last_frame = io.update_delta_time(last_frame);
 		let mut ui = imgui.frame();
-		imgui::Window::new(&ui, im_str!("Hello, world!"))
-			.size([300.0, 100.0], Condition::FirstUseEver)
-			.build(|| ui.text(format!("FPS: {:.2}", 1.0 / delta_time)));
+		profiler.draw_ui(delta_time, &mut ui);
 
 		let mut target = display.draw();
 		target.clear_color_srgb_and_depth((0.0, 0.0, 0.0, 1.0), 24.0);

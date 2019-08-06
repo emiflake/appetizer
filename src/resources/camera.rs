@@ -15,14 +15,6 @@ pub struct Camera {
 	pub zoom: f32,
 }
 
-#[derive(Debug)]
-pub enum CameraDirection {
-	Forward,
-	Backward,
-	Left,
-	Right,
-}
-
 impl Default for Camera {
 	fn default() -> Self {
 		Self {
@@ -40,6 +32,7 @@ impl Default for Camera {
 }
 
 impl Camera {
+	#[allow(dead_code)]
 	pub fn new(position: glm::Vec3) -> Self {
 		let mut camera = Self {
 			position,
@@ -56,19 +49,8 @@ impl Camera {
 		glm::look_at(&self.position, &(self.position + self.front), &self.up)
 	}
 
-	// Primitive movement for keyboards, (dumb)
-	pub fn do_move(&mut self, d: CameraDirection, dt: f32) {
-		let velocity = self.speed * dt;
-		match d {
-			CameraDirection::Forward => self.position += self.front * velocity,
-			CameraDirection::Backward => self.position -= self.front * velocity,
-			CameraDirection::Right => self.position += self.right * velocity,
-			CameraDirection::Left => self.position -= self.right * velocity,
-		}
-	}
-
-	pub fn do_move_relative(&mut self, delta: glm::Vec3, dt: f32) {
-		self.position += self.front * delta.z + self.up * delta.y + self.right * delta.x;
+	pub fn do_move(&mut self, delta: glm::Vec3, dt: f32) {
+		self.position += self.front * delta.z * dt + self.up * delta.y * dt + self.right * delta.x * dt;
 	}
 
 	// Rotate Yaw and Pitch.

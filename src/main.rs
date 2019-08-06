@@ -1,4 +1,3 @@
-extern crate gl;
 extern crate glutin;
 #[macro_use]
 extern crate glium;
@@ -15,12 +14,10 @@ extern crate nalgebra_glm as glm;
 extern crate specs;
 #[macro_use]
 extern crate specs_derive;
-
 extern crate shred;
 extern crate shred_derive;
 
 use std::time::Instant;
-
 use std::fs;
 use std::io::Cursor;
 use std::thread;
@@ -30,29 +27,22 @@ mod object;
 mod macros;
 mod obj_parser;
 mod profiler;
-
 mod components;
 mod resources;
 mod systems;
-
 mod world;
+mod resource_store;
 
 use specs::prelude::*;
-
 use components::*;
 use resources::*;
 use systems::*;
-
 use glium::Surface;
-
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-
 use imgui::Context;
 
 const SCR_WIDTH: f64 = 1280.0;
 const SCR_HEIGHT: f64 = 720.0;
-
-/* Holy what the heck! */
 
 pub fn main() -> Result<(), String> {
 	let mut event_loop = glutin::EventsLoop::new();
@@ -61,8 +51,6 @@ pub fn main() -> Result<(), String> {
 		.with_title("Appetizer");
 	let cb = glutin::ContextBuilder::new().with_depth_buffer(24);
 	let display = glium::Display::new(wb, cb, &event_loop).unwrap();
-
-	gl::load_with(|s| display.gl_window().get_proc_address(&s) as _);
 
 	let mut world = world::create_world()?;
 	let mut dispatcher = DispatcherBuilder::new()
@@ -128,12 +116,12 @@ pub fn main() -> Result<(), String> {
 				platform.handle_event(imgui.io_mut(), &window, &event);
 				mouse_state.handle_event(&event);
 				key_state.handle_event(&event);
-				match event {
-					glutin::Event::WindowEvent { event, .. } => match event {
-						glutin::WindowEvent::CloseRequested => closed = true,
-						_ => (),
-					},
-					_ => (),
+				if let glutin::Event::WindowEvent {
+					event: glutin::WindowEvent::CloseRequested,
+					..
+				} = event
+				{
+					closed = true;
 				}
 			});
 		}
@@ -150,12 +138,6 @@ pub fn main() -> Result<(), String> {
 		}
 		dispatcher.dispatch(&world);
 
-		// IMGUI PREPARE
-		let io = imgui.io_mut();
-		last_frame = io.update_delta_time(last_frame);
-		let mut ui = imgui.frame();
-		profiler.draw_ui(delta_time, &mut ui);
-
 		let mut target = display.draw();
 		target.clear_color_srgb_and_depth((0.0, 0.0, 0.0, 1.0), 24.0);
 		// SCENE RENDER
@@ -166,7 +148,7 @@ pub fn main() -> Result<(), String> {
 			let camera = world.read_resource::<camera::Camera>();
 			let projection = world.read_resource::<projection::Projection>();
 
-			for (trans, model, material) in (&trans, &models, &materials).join() {
+			for (trans, model, _material) in (&trans, &models, &materials).join() {
 				let uniforms = uniform! {
 					camera: *camera.get_view_matrix().as_ref(),
 					projection: *projection.0.as_ref(),
@@ -188,7 +170,12 @@ pub fn main() -> Result<(), String> {
 			}
 		}
 
-		// IMGUI RENDER
+		let io = imgui.io_mut();
+		last_frame = io.update_delta_time(last_frame);
+		
+		let mut ui = imgui.frame();
+		profiler.draw_ui(delta_time, &mut ui);
+
 		let draw_data = ui.render();
 		renderer.render(&mut target, draw_data).unwrap();
 		target.finish().expect("Failed to swap buffers");

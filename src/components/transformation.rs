@@ -21,6 +21,7 @@ impl TransformationComponent {
 		self.0[14] = pos[2];
 	}
 
+	#[allow(dead_code)]
 	pub fn get_pos(&self) -> glm::Vec3 {
 		glm::vec4_to_vec3(&glm::column(&self.0, 3))
 	}

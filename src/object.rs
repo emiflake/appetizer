@@ -1,8 +1,4 @@
 use crate::components::model::ModelComponent;
-use gl::types::*;
-use std::ffi::c_void;
-use std::mem;
-use std::ptr;
 
 use glium::implement_vertex;
 

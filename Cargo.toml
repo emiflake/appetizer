@@ -7,8 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# glfw = "0.30.0"
-gl = "0.13.0"
 glutin = "0.21.0"
 glium = "0.25.1"
 

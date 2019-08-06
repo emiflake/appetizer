@@ -2,9 +2,7 @@ use crate::components::{
 	light::LightComponent, name::NameComponent, transformation::TransformationComponent,
 };
 use crate::resources::{
-	camera::Camera,
 	delta_time::DeltaTime,
-	//  key_state::Keystate, texture_map::TextureMap,
 	time::CurrentTime,
 };
 
@@ -22,7 +20,7 @@ impl<'a> System<'a> for LoggerSystem {
 	);
 
 	fn run(&mut self, (names, lights, mut trans, _delta_time, current_time): Self::SystemData) {
-		for (name, _light, mut trans) in (&names, &lights, &mut trans).join() {
+		for (name, _light, trans) in (&names, &lights, &mut trans).join() {
 			if name.0 == "Random Light" {
 				trans.set_pos(glm::vec3(
 					(current_time.0.cos() * 100.0) as f32,

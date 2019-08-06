@@ -32,7 +32,8 @@ impl Profiler {
 			.position([50.0, 200.0], Condition::FirstUseEver)
 			.build(|| {
 				ui.text(format!("FPS: {:.2}/{:.5}ms", 1.0 / delta_time, delta_time));
-				ui.slider_int(im_str!("View window"), &mut self.view_window, 10, 1000).build();
+				ui.slider_int(im_str!("View window"), &mut self.view_window, 10, 1000)
+					.build();
 
 				ui.plot_lines(im_str!("Delay (ms)"), self.as_vec().as_ref())
 					.graph_size([300.0, 75.0])

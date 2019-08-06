@@ -17,14 +17,10 @@ extern crate specs;
 extern crate specs_derive;
 
 extern crate shred;
-#[macro_use]
 extern crate shred_derive;
-
-use std::sync::mpsc::Receiver;
 
 use std::time::Instant;
 
-use std::ffi::CStr;
 use std::fs;
 use std::io::Cursor;
 use std::thread;
@@ -47,16 +43,11 @@ use components::*;
 use resources::*;
 use systems::*;
 
-use glium::backend::Facade;
 use glium::Surface;
-use glutin::Window;
-use glutin::*;
-
-use imgui::*;
 
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 
-use imgui::{Context, FontConfig, FontGlyphRanges, FontSource, Ui};
+use imgui::Context;
 
 const SCR_WIDTH: f64 = 1280.0;
 const SCR_HEIGHT: f64 = 720.0;
@@ -199,8 +190,7 @@ pub fn main() -> Result<(), String> {
 
 		// IMGUI RENDER
 		let draw_data = ui.render();
-		renderer.render(&mut target, draw_data);
-
+		renderer.render(&mut target, draw_data).unwrap();
 		target.finish().expect("Failed to swap buffers");
 
 		thread::sleep(std::time::Duration::from_millis(16));

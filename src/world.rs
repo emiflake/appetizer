@@ -9,7 +9,7 @@ fn register_components(mut world: &mut World) {
 	world.register::<model::ModelComponent>();
 	world.register::<name::NameComponent>();
 	world.register::<texture::GLTextureComponent>();
-	world.register::<shader::ShaderComponent>();
+	// world.register::<shader::ShaderComponent>();
 	world.register::<material::MaterialComponent>();
 	world.register::<light::LightComponent>();
 }
@@ -32,8 +32,8 @@ pub fn create_world() -> Result<World, String> {
 	register_components(&mut world);
 	insert_resources(&mut world);
 
-	let shader = shader::ShaderComponent::new("vertex.vs", "fragment.fs")
-		.map_err(|e| format!("Shader error: {:?}", e))?;
+	// let shader = shader::ShaderComponent::new("vertex.vs", "fragment.fs")
+	// 	.map_err(|e| format!("Shader error: {:?}", e))?;
 
 	let teapot = obj_parser::parse("objs/teapot.obj".to_string())
 		.map_err(|e| format!("Parser error: {:?}", e))?;
@@ -79,7 +79,6 @@ pub fn create_world() -> Result<World, String> {
 			specular: glm::vec3(0.8, 0.8, 0.8),
 			shininess: 32.0,
 		})
-		.with(shader)
 		.with(teapot.get_component())
 		.with(texture::GLTextureComponent(wall_gltexture_handle))
 		.with(name::NameComponent("Alpha".to_string()))
@@ -90,7 +89,6 @@ pub fn create_world() -> Result<World, String> {
 		.with(transformation::TransformationComponent::from_pos(
 			glm::vec3(0.0, 1000.0, 0.0),
 		))
-		.with(shader)
 		.with(material::MaterialComponent {
 			ambient: glm::vec3(1.0, 0.5, 0.5),
 			diffuse: glm::vec3(0.0, 0.0, 0.0),

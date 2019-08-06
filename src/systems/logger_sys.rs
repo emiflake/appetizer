@@ -2,11 +2,12 @@ use crate::components::{
 	light::LightComponent, name::NameComponent, transformation::TransformationComponent,
 };
 use crate::resources::{
-	camera::Camera, delta_time::DeltaTime, key_state::Keystate, texture_map::TextureMap,
+	camera::Camera,
+	delta_time::DeltaTime,
+	//  key_state::Keystate, texture_map::TextureMap,
 	time::CurrentTime,
 };
 
-use glfw::Key;
 use specs::prelude::*;
 
 pub struct LoggerSystem;

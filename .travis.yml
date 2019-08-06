@@ -1,2 +1,11 @@
 language: rust
 
+cache:
+  directories:
+    - /home/travis/.cargo
+
+# But don't cache the cargo registry
+# (ref. https://levans.fr/rust_travis_cache.html)
+before_cache:
+  - rm -rf /home/travis/.cargo/registry
+

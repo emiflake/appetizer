@@ -50,7 +50,8 @@ impl Camera {
 	}
 
 	pub fn do_move(&mut self, delta: glm::Vec3, dt: f32) {
-		self.position += self.front * delta.z * dt + self.up * delta.y * dt + self.right * delta.x * dt;
+		self.position +=
+			self.front * delta.z * dt + self.up * delta.y * dt + self.right * delta.x * dt;
 	}
 
 	// Rotate Yaw and Pitch.

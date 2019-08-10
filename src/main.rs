@@ -17,29 +17,29 @@ extern crate specs_derive;
 extern crate shred;
 extern crate shred_derive;
 
-use std::time::Instant;
 use std::fs;
 use std::io::Cursor;
 use std::thread;
+use std::time::Instant;
 
 mod object;
 #[macro_use]
 mod macros;
+mod components;
 mod obj_parser;
 mod profiler;
-mod components;
+mod resource_store;
 mod resources;
 mod systems;
 mod world;
-mod resource_store;
 
-use specs::prelude::*;
 use components::*;
-use resources::*;
-use systems::*;
 use glium::Surface;
-use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use imgui::Context;
+use imgui_winit_support::{HiDpiMode, WinitPlatform};
+use resources::*;
+use specs::prelude::*;
+use systems::*;
 
 const SCR_WIDTH: f64 = 1280.0;
 const SCR_HEIGHT: f64 = 720.0;
@@ -75,16 +75,73 @@ pub fn main() -> Result<(), String> {
 
 	let vertex_shader = fs::read_to_string("./vertex.vs").expect("Can't read vertex shader");
 	let fragment_shader = fs::read_to_string("./fragment.fs").expect("Can't read fragment shader");
+
+	// PBR TESTING
+	println!("Reading PBR textures");
+	// BASE COLOR
 	let image = image::load(
-		Cursor::new(&include_bytes!("../assets/textures/wall.jpg")[..]),
-		image::JPEG,
+		Cursor::new(&include_bytes!("../assets/textures/bricks/albedo.png")[..]),
+		image::ImageFormat::PNG,
 	)
 	.unwrap()
 	.to_rgba();
 	let image_dimensions = image.dimensions();
 	let image =
 		glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
-	let texture = glium::texture::Texture2d::new(&display, image).unwrap();
+	let texture_base = glium::texture::Texture2d::new(&display, image).unwrap();
+	println!("Read base color");
+
+	// METALLIC
+	let image = image::load(
+		Cursor::new(&include_bytes!("../assets/textures/bricks/metallic.png")[..]),
+		image::ImageFormat::PNG,
+	)
+	.unwrap()
+	.to_rgba();
+	let image_dimensions = image.dimensions();
+	let image =
+		glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+	let texture_metallic = glium::texture::Texture2d::new(&display, image).unwrap();
+	println!("Read metallic color");
+
+	// NORMAL
+	let image = image::load(
+		Cursor::new(&include_bytes!("../assets/textures/bricks/normal.png")[..]),
+		image::ImageFormat::PNG,
+	)
+	.unwrap()
+	.to_rgba();
+	let image_dimensions = image.dimensions();
+	let image =
+		glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+	let texture_normal = glium::texture::Texture2d::new(&display, image).unwrap();
+	println!("Read normal color");
+
+	// ROUGHNESS
+	let image = image::load(
+		Cursor::new(&include_bytes!("../assets/textures/bricks/roughness.png")[..]),
+		image::ImageFormat::PNG,
+	)
+	.unwrap()
+	.to_rgba();
+	let image_dimensions = image.dimensions();
+	let image =
+		glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+	let texture_roughness = glium::texture::Texture2d::new(&display, image).unwrap();
+	println!("Read roughness color");
+
+	// AMBIENT OCCLUSION
+	let image = image::load(
+		Cursor::new(&include_bytes!("../assets/textures/bricks/ambient_occlusion.png")[..]),
+		image::ImageFormat::PNG,
+	)
+	.unwrap()
+	.to_rgba();
+	let image_dimensions = image.dimensions();
+	let image =
+		glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+	let texture_ao = glium::texture::Texture2d::new(&display, image).unwrap();
+	println!("Read roughness color");
 
 	let program =
 		glium::Program::from_source(&display, &vertex_shader, &fragment_shader, None).unwrap();
@@ -139,21 +196,36 @@ pub fn main() -> Result<(), String> {
 		dispatcher.dispatch(&world);
 
 		let mut target = display.draw();
-		target.clear_color_srgb_and_depth((0.0, 0.0, 0.0, 1.0), 24.0);
+		target.clear_color_srgb_and_depth((0.1, 0.1, 0.1, 1.0), 24.0);
 		// SCENE RENDER
 		{
 			let trans = world.read_component::<transformation::TransformationComponent>();
 			let models = world.read_component::<model::ModelComponent>();
 			let materials = world.read_component::<material::MaterialComponent>();
+			let lights = world.read_component::<light::LightComponent>();
 			let camera = world.read_resource::<camera::Camera>();
 			let projection = world.read_resource::<projection::Projection>();
+
+			let mut light_pos = glm::vec3(0.0, 0.0, 0.0);
+			let mut light_color = glm::vec3(0.0, 0.0, 0.0);
+			for (trans, light) in (&trans, &lights).join() {
+				light_pos = trans.get_pos();
+				light_color = light.color;
+			}
 
 			for (trans, model, _material) in (&trans, &models, &materials).join() {
 				let uniforms = uniform! {
 					camera: *camera.get_view_matrix().as_ref(),
 					projection: *projection.0.as_ref(),
 					model: *trans.0.as_ref(),
-					our_texture: &texture,
+					light_pos: *light_pos.as_ref(),
+					light_color: *light_color.as_ref(),
+					// PBR WORKFLOW UNIFORMS
+					tex_base: &texture_base,
+					tex_ao: &texture_ao,
+					tex_normal: &texture_normal,
+					tex_rough: &texture_roughness,
+					tex_metal: &texture_metallic,
 				};
 				let vertex_buffer = glium::VertexBuffer::new(&display, &model.vertices).unwrap();
 				let params = glium::DrawParameters {
@@ -172,7 +244,7 @@ pub fn main() -> Result<(), String> {
 
 		let io = imgui.io_mut();
 		last_frame = io.update_delta_time(last_frame);
-		
+
 		let mut ui = imgui.frame();
 		profiler.draw_ui(delta_time, &mut ui);
 

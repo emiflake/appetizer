@@ -27,9 +27,7 @@ pub fn create_world() -> Result<World, String> {
 	register_components(&mut world);
 	insert_resources(&mut world);
 
-	let teapot = obj_parser::parse("objs/teapot.obj".to_string())
-		.map_err(|e| format!("Parser error: {:?}", e))?;
-	let cube = obj_parser::parse("objs/cube.obj".to_string())
+	let plane = obj_parser::parse("objs/plane.obj".to_string())
 		.map_err(|e| format!("Parser error: {:?}", e))?;
 
 	{
@@ -39,42 +37,23 @@ pub fn create_world() -> Result<World, String> {
 
 	world
 		.create_entity()
-		.with(transformation::TransformationComponent(glm::mat4(
-			1.0, 0.0, 0.0, 0.0, //
-			0.0, 1.0, 0.0, 0.0, //
-			0.0, 0.0, 1.0, 0.0, //
-			0.0, 0.0, 0.0, 1.0, //
-		)))
+		.with(transformation::TransformationComponent::from_pos(glm::vec3(0.0, 0.0, 0.0)))
 		.with(material::MaterialComponent {
 			ambient: glm::vec3(0.1, 0.1, 0.1),
 			diffuse: glm::vec3(0.5, 0.5, 0.5),
 			specular: glm::vec3(0.8, 0.8, 0.8),
 			shininess: 32.0,
 		})
-		.with(teapot.get_component())
+		.with(plane.get_component())
 		.with(name::NameComponent("Alpha".to_string()))
 		.build();
 
 	world
 		.create_entity()
-		.with(transformation::TransformationComponent::from_pos(
-			glm::vec3(0.0, 1000.0, 0.0),
-		))
-		.with(material::MaterialComponent {
-			ambient: glm::vec3(1.0, 0.5, 0.5),
-			diffuse: glm::vec3(0.0, 0.0, 0.0),
-			specular: glm::vec3(0.0, 0.0, 0.0),
-			shininess: 32.0,
+		.with(transformation::TransformationComponent::from_pos(glm::vec3(30.0, 100.0, 0.0)))
+		.with(light::LightComponent {
+			color: glm::vec3(30000.0, 30000.0, 30000.0),
 		})
-		.with(cube.get_component())
-		.with(light::LightComponent(light::Light::PointLight {
-			ambient: glm::vec3(1.0, 1.0, 1.0),
-			diffuse: glm::vec3(1.0, 1.0, 1.0),
-			specular: glm::vec3(1.0, 1.0, 1.0),
-			constant: 1.0,
-			linear: 0.09,
-			quadratic: 0.032,
-		}))
 		.with(name::NameComponent("Random Light".to_string()))
 		.build();
 

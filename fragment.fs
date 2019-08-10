@@ -1,71 +1,105 @@
 #version 330 core
 out vec4 FragColor;
-uniform float our_color;
+
 in vec2 TexCoord;
+in vec3 WorldPos;
 in vec3 Normal;
 
-struct Material {
-	vec3 ambient;
-	vec3 diffuse;
-	vec3 specular;
-	float shininess;
-};
+uniform sampler2D tex_base;
+uniform sampler2D tex_ao;
+uniform sampler2D tex_rough;
+uniform sampler2D tex_metal;
+uniform sampler2D tex_normal;
 
-struct PointLight {
-	vec3 position;
-
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-	
-    float constant;
-    float linear;
-    float quadratic;
-};
-
-uniform Material material;
-uniform PointLight point_light;
-
-uniform sampler2D our_texture;
+uniform vec3 light_pos;
+uniform vec3 light_color;
 uniform vec3 camera_pos;
 
-in vec3 FragPos;
+const float PI = 3.14159265359;
 
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+    float a = roughness*roughness;
+    float a2 = a*a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+
+    float nom   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return nom / max(denom, 0.001); // prevent divide by zero for roughness=0.0 and NdotH=1.0
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+
+    float nom   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
 
 void main() {
-	// float dist = length(point_light.position - FragPos);
-	// float attenuation = 
-	// 	1.0 / (point_light.constant + point_light.linear * dist + 
-	// 		point_light.quadratic * (dist * dist));
+	vec3 albedo = pow(texture(tex_base, TexCoord).rgb, vec3(2.2));
+	vec3 normal = texture(tex_normal, TexCoord).rgb;
+	float roughness = texture(tex_rough, TexCoord).r;
+	float metalness = texture(tex_metal, TexCoord).r;
+	float ao = texture(tex_ao, TexCoord).r;
 
-	// // Ensure normal is actually a normal, lol
-	// vec3 norm = normalize(Normal);
+	vec3 N = normalize(Normal * (normal * 2.0 - 1.0));
+	vec3 V = normalize(camera_pos - WorldPos);
 
-	// // FragPos (position of hit) to light
-	// vec3 light_dir = normalize(point_light.position - FragPos);
+	vec3 F0 = vec3(0.04);
+	F0 = mix(F0, albedo, metalness);
 
-	// // Check how 'close' the normal and the light is
-	// // the closer, the more light it has
-	// vec3 ambient = point_light.ambient * material.ambient;
+	vec3 Lo = vec3(0.0);
+	// For each light: 
+	vec3 L = normalize(light_pos - WorldPos);
+	vec3 H = normalize(V + L);
+	float distance = length(light_pos - WorldPos);
+	float attenuation = 1.0 / (distance * distance);
+	vec3 radiance = light_color * attenuation;
 
-	// float diff = max(dot(norm, light_dir), 0.0);
-	// vec3 diffuse = diff * point_light.diffuse * material.diffuse;
+	float NDF = DistributionGGX(N, H, roughness);
+	float G = GeometrySmith(N, V, L, roughness);
+	vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+	
+	vec3 kS = F;
+	vec3 kD = vec3(1.0) - kS;
+	kD *= 1.0 - metalness;
 
-	// vec3 view_dir = normalize(camera_pos - FragPos);
-	// vec3 reflect_dir = reflect(-light_dir, norm);
+	vec3 numerator = NDF * G * F;
+	float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+	vec3 specular = numerator / max(denominator, 0.001);
+	
+	float NdotL = max(dot(N, L), 0.0);
+	Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 
-	// float spec = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
+	vec3 ambient = vec3(0.03) * albedo * ao; // Could be replaced with AO if provided
+	vec3 color = ambient + Lo;
+	
+	// HDR tonemapping
+	color = color / (color + vec3(1.0));
+	// gamma correct
+	color = pow(color, vec3(1.0 / 2.2)); 
 
-	// vec3 specular = (spec * material.specular) * point_light.specular;
-
-	// // ambient  *= attenuation;
-	// // diffuse  *= attenuation;
-	// // specular *= attenuation;
-
-	// vec3 eqn = ambient + diffuse + specular;
-	vec3 eqn = vec3(1.0);
-
-	vec3 result = (eqn) * vec3(texture(our_texture, TexCoord));
-	FragColor = vec4(result, 1.0);
-	// FragColor = vec4(1.0);
+	FragColor = vec4(color, 1.0);
 }

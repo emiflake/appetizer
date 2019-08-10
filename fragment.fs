@@ -4,12 +4,17 @@ out vec4 FragColor;
 in vec2 TexCoord;
 in vec3 WorldPos;
 in vec3 Normal;
+in mat3 TBN;
+in vec3 TangentLightPos;
+in vec3 TangentViewPos;
+in vec3 TangentFragPos;
 
 uniform sampler2D tex_base;
 uniform sampler2D tex_ao;
 uniform sampler2D tex_rough;
 uniform sampler2D tex_metal;
 uniform sampler2D tex_normal;
+uniform sampler2D tex_bump;
 
 uniform vec3 light_pos;
 uniform vec3 light_color;
@@ -59,10 +64,12 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 
 void main() {
 	vec3 albedo = pow(texture(tex_base, TexCoord).rgb, vec3(2.2));
-	vec3 normal = texture(tex_normal, TexCoord).rgb;
 	float roughness = texture(tex_rough, TexCoord).r;
 	float metalness = texture(tex_metal, TexCoord).r;
 	float ao = texture(tex_ao, TexCoord).r;
+	vec3 normal = texture(tex_normal, TexCoord).rgb;
+	normal = normalize(normal * 2.0 - 1.0);
+	normal = normalize(TBN * normal);
 
 	vec3 N = normalize(Normal * (normal * 2.0 - 1.0));
 	vec3 V = normalize(camera_pos - WorldPos);
@@ -92,8 +99,9 @@ void main() {
 	
 	float NdotL = max(dot(N, L), 0.0);
 	Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+	// End for each light
 
-	vec3 ambient = vec3(0.03) * albedo * ao; // Could be replaced with AO if provided
+	vec3 ambient = vec3(0.03) * albedo * 1.0;
 	vec3 color = ambient + Lo;
 	
 	// HDR tonemapping

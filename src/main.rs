@@ -80,7 +80,7 @@ pub fn main() -> Result<(), String> {
 	println!("Reading PBR textures");
 	// BASE COLOR
 	let image = image::load(
-		Cursor::new(&include_bytes!("../assets/textures/bricks/albedo.png")[..]),
+		Cursor::new(&include_bytes!("../assets/textures/metal-plates/albedo.png")[..]),
 		image::ImageFormat::PNG,
 	)
 	.unwrap()
@@ -93,7 +93,7 @@ pub fn main() -> Result<(), String> {
 
 	// METALLIC
 	let image = image::load(
-		Cursor::new(&include_bytes!("../assets/textures/bricks/metallic.png")[..]),
+		Cursor::new(&include_bytes!("../assets/textures/metal-plates/metallic.png")[..]),
 		image::ImageFormat::PNG,
 	)
 	.unwrap()
@@ -106,7 +106,7 @@ pub fn main() -> Result<(), String> {
 
 	// NORMAL
 	let image = image::load(
-		Cursor::new(&include_bytes!("../assets/textures/bricks/normal.png")[..]),
+		Cursor::new(&include_bytes!("../assets/textures/metal-plates/normal.png")[..]),
 		image::ImageFormat::PNG,
 	)
 	.unwrap()
@@ -119,7 +119,7 @@ pub fn main() -> Result<(), String> {
 
 	// ROUGHNESS
 	let image = image::load(
-		Cursor::new(&include_bytes!("../assets/textures/bricks/roughness.png")[..]),
+		Cursor::new(&include_bytes!("../assets/textures/metal-plates/roughness.png")[..]),
 		image::ImageFormat::PNG,
 	)
 	.unwrap()
@@ -132,7 +132,7 @@ pub fn main() -> Result<(), String> {
 
 	// AMBIENT OCCLUSION
 	let image = image::load(
-		Cursor::new(&include_bytes!("../assets/textures/bricks/ambient_occlusion.png")[..]),
+		Cursor::new(&include_bytes!("../assets/textures/metal-plates/ambient_occlusion.png")[..]),
 		image::ImageFormat::PNG,
 	)
 	.unwrap()
@@ -141,7 +141,7 @@ pub fn main() -> Result<(), String> {
 	let image =
 		glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
 	let texture_ao = glium::texture::Texture2d::new(&display, image).unwrap();
-	println!("Read roughness color");
+	println!("Read ambient occlusion color");
 
 	let program =
 		glium::Program::from_source(&display, &vertex_shader, &fragment_shader, None).unwrap();
@@ -201,7 +201,6 @@ pub fn main() -> Result<(), String> {
 		{
 			let trans = world.read_component::<transformation::TransformationComponent>();
 			let models = world.read_component::<model::ModelComponent>();
-			let materials = world.read_component::<material::MaterialComponent>();
 			let lights = world.read_component::<light::LightComponent>();
 			let camera = world.read_resource::<camera::Camera>();
 			let projection = world.read_resource::<projection::Projection>();
@@ -213,7 +212,7 @@ pub fn main() -> Result<(), String> {
 				light_color = light.color;
 			}
 
-			for (trans, model, _material) in (&trans, &models, &materials).join() {
+			for (trans, model) in (&trans, &models).join() {
 				let uniforms = uniform! {
 					camera: *camera.get_view_matrix().as_ref(),
 					projection: *projection.0.as_ref(),

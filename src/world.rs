@@ -15,7 +15,10 @@ fn register_components(world: &mut World) {
 fn insert_resources(world: &mut World) {
 	world.insert(delta_time::DeltaTime(0.0));
 	world.insert(key_state::Keystate::default());
-	world.insert(camera::Camera::default());
+	world.insert(camera::Camera {
+		position: glm::vec3(0.0, 0.0, -10.0),
+		..camera::Camera::default()
+	});
 	world.insert(projection::Projection::default());
 	world.insert(mouse_state::MouseState::default());
 	world.insert(time::CurrentTime::default());
@@ -37,22 +40,25 @@ pub fn create_world() -> Result<World, String> {
 
 	world
 		.create_entity()
-		.with(transformation::TransformationComponent::from_pos(glm::vec3(0.0, 0.0, 0.0)))
-		.with(material::MaterialComponent {
-			ambient: glm::vec3(0.1, 0.1, 0.1),
-			diffuse: glm::vec3(0.5, 0.5, 0.5),
-			specular: glm::vec3(0.8, 0.8, 0.8),
-			shininess: 32.0,
-		})
+		.with(transformation::TransformationComponent(
+			glm::mat4(
+				1.0, 0.0, 0.0, 0.0,
+				0.0, 1.0, 0.0, 0.0,
+				0.0, 0.0, 1.0, 0.0,
+				0.0, 0.0, 0.0, 1.0
+			),
+		))
 		.with(plane.get_component())
 		.with(name::NameComponent("Alpha".to_string()))
 		.build();
 
 	world
 		.create_entity()
-		.with(transformation::TransformationComponent::from_pos(glm::vec3(30.0, 100.0, 0.0)))
+		.with(transformation::TransformationComponent::from_pos(
+			glm::vec3(0.0, 0.0, 0.0),
+		))
 		.with(light::LightComponent {
-			color: glm::vec3(30000.0, 30000.0, 30000.0),
+			color: glm::vec3(300.0, 300.0, 300.0),
 		})
 		.with(name::NameComponent("Random Light".to_string()))
 		.build();
